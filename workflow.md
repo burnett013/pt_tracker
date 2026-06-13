@@ -4,18 +4,48 @@ This guide outlines how doctors, nurses, and administrative staff use the **Anti
 
 ---
 
+## 🌐 Accessing the App
+
+The application is hosted on **Posit Connect Cloud** and can be accessed at:
+
+> **https://connect.posit.cloud/burnett013/content/019ec20d-5d57-ece3-12bf-d3fe94c74**
+
+No login or account is required for the current demo version. Simply open the link in any modern web browser.
+
+### Sharing with Others
+- Set the app's access to **"Anyone with the link"** in the Posit Connect Cloud settings (⚙️ gear icon → Access/Sharing).
+- Send the URL above directly to any collaborator or reviewer.
+
+---
+
+## 🏗️ Architecture Overview
+
+| Component | Technology | Details |
+|-----------|-----------|---------|
+| **Frontend** | Streamlit (Python) | Multi-page app with 7 workflow pages |
+| **Database** | Neon Serverless PostgreSQL | Cloud-hosted, auto-scaling, SSL connections |
+| **Hosting** | Posit Connect Cloud (Free tier) | Git-backed deployment from GitHub |
+| **Source Code** | GitHub | https://github.com/burnett013/pt_tracker.git |
+
+### Key Configuration
+- **Database credentials** are stored as environment variables (`PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD`) in the Posit Connect Cloud dashboard — never committed to Git.
+- **Authentication** has been removed for demo purposes. All audit trail entries log as `demo@clinic.local`. Authentication can be re-enabled by restoring the `services/auth.py` integration when deploying to a production environment with Entra ID or similar identity provider.
+- The `sys.path` injection at the top of `app.py` and each page under `pages/` is required for Posit Connect Cloud's sandboxed Python environment to resolve the `services` and `db` packages.
+
+---
+
 ## 🔒 Security & Privacy Rules (Must-Know)
 
 To comply with HIPAA and privacy safeguards:
 1. **Never enter a patient's name, date of birth, phone number, or gender.**
 2. The **Medical Record Number (MRN)** is the **only** patient identifier stored in this system.
 3. **MRN Format**: Must be an uppercase **M** followed by **00** and **7 digits** (e.g., `M001234567`).
-4. **Activity Logs**: All changes you make (adding patients, recording infusions, logging scans) are automatically logged with your login name and a timestamp for clinical safety auditing.
+4. **Activity Logs**: All changes you make (adding patients, recording infusions, logging scans) are automatically logged with a user identifier and timestamp for clinical safety auditing.
 
 ---
 
 ## 📊 1. The Dashboard (Your Daily Worklist)
-When you log in, you will land on the **Clinical Dashboard**. This is your central hub:
+When you open the app, navigate to the **Dashboard** page in the sidebar. This is your central hub:
 
 * **🚨 Action Items This Week**: This is your priority list. A patient appears here if they require immediate attention, including:
   * An infusion is due or overdue this week.
@@ -33,7 +63,7 @@ When you log in, you will land on the **Clinical Dashboard**. This is your centr
 ## ➕ 2. How to Enroll a New Patient
 Before a patient can receive their first infusion, they must be registered in the tracker:
 
-1. Select **02 Patient Enrollment** in the sidebar.
+1. Select **Patient Enrollment** in the sidebar.
 2. Enter the patient's **MRN** (must match format: `M001234567`).
 3. Select their prescribed **Drug Therapy** (*Lecanemab* or *Donanemab*).
 4. Select their **APOE Genetic Status** (this guides clinical risk planning).
@@ -47,7 +77,7 @@ Before a patient can receive their first infusion, they must be registered in th
 ## 💉 3. How to Log an Infusion
 Every time a patient completes an infusion, it must be recorded to keep their schedule up-to-date:
 
-1. Select **03 Infusion Update** in the sidebar.
+1. Select **Infusion Update** in the sidebar.
 2. Select the patient's **MRN** from the dropdown list.
 3. Review the **Safety Check** panel:
    * **🔴 CRITICAL HOLD WARNING**: If a surveillance MRI is due before this infusion, the app will show a red block and **block you from submitting**. Do not administer the infusion.
@@ -62,7 +92,7 @@ Every time a patient completes an infusion, it must be recorded to keep their sc
 ## 🧠 4. How to Record an MRI Scan
 Safety guidelines require periodic brain MRIs to monitor for ARIA. To log a scan:
 
-1. Select **04 MRI Update** in the sidebar.
+1. Select **MRI Update** in the sidebar.
 2. Select the patient's **MRN**.
 3. Choose the **MRI Type**:
    * **Scheduled Surveillance**: Routine safety scans (e.g. before Infusion #3 for Lecanemab).
@@ -80,7 +110,7 @@ Safety guidelines require periodic brain MRIs to monitor for ARIA. To log a scan
 ## ⚠️ 5. How to Log an ARIA Event
 If a patient is diagnosed with ARIA (Amyloid-Related Imaging Abnormalities):
 
-1. Select **05 ARIA Event** in the sidebar.
+1. Select **ARIA Event** in the sidebar.
 2. Select the patient's **MRN** and enter the **Detection Date**.
 3. Check the type: **ARIA-E** (swelling) and/or **ARIA-H** (bleeding).
 4. Select the **Radiographic Severity** (Mild, Moderate, Severe) and **Clinical Symptom Severity** (None, Mild, Moderate, Severe).
@@ -95,7 +125,7 @@ If a patient is diagnosed with ARIA (Amyloid-Related Imaging Abnormalities):
 ## ❌ 6. How to Record a Discontinuation
 If a patient permanently stops therapy (due to adverse events, disease progression, or choice):
 
-1. Select **06 Discontinuation Event** in the sidebar.
+1. Select **Discontinuation Event** in the sidebar.
 2. Select the patient's **MRN** and enter the **Discontinuation Date**.
 3. Select the primary **Clinical Reason** (e.g., Stroke, Disease Progression, DVT). If selecting "Other", type specific details.
 4. Check **Post-Discontinuation Follow-up Safety MRI Required** if follow-up safety scans are needed.
@@ -106,7 +136,7 @@ If a patient permanently stops therapy (due to adverse events, disease progressi
 ## 🔍 7. How to Look Up a Patient's History
 To review a patient's complete clinical timeline:
 
-1. Select **07 Patient Lookup** in the sidebar.
+1. Select **Patient Lookup** in the sidebar.
 2. Select the patient's **MRN**.
 3. Use the tabs to browse:
    * **💉 Infusions History**: List of completed infusions, dates, and reactions.
@@ -114,3 +144,27 @@ To review a patient's complete clinical timeline:
    * **⚠️ ARIA Events History**: Chronological log of ARIA events, severities, and status.
    * **❌ Discontinuation details**: Reasons and follow-up plans.
    * **📋 Audit & Change Logs**: A human-readable history showing exactly **who** made changes to this patient's profile and **when**, outlining the exact changes (e.g. changing location from Talis to Vivo).
+
+---
+
+## 🔧 Developer Notes: Updating the App
+
+### Making Code Changes
+1. Edit files locally in the `anti_amyloid_tracker/` directory.
+2. Commit and push to GitHub:
+   ```bash
+   git add -A
+   git commit -m "Description of changes"
+   git push origin main
+   ```
+3. Go to the Posit Connect Cloud dashboard and click **Republish** to pull the latest commit.
+
+### Environment Variables (Database)
+If the Neon database credentials change, update them in the Posit Connect Cloud dashboard under the app's settings → Environment Variables:
+- `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD`
+
+### Re-enabling Authentication
+To restore authentication for production use:
+1. Re-integrate `services/auth.py` by importing `render_auth_sidebar`, `get_logged_in_user`, and `verify_access` in `app.py` and all page files.
+2. Configure the identity provider (e.g., Entra ID) in Posit Connect Cloud settings.
+3. Set the `ALLOWED_USERS` environment variable to a comma-separated list of authorized email addresses.
