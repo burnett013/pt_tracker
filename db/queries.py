@@ -11,8 +11,12 @@ SECRETS_PATH = os.path.join(BASE_DIR, ".streamlit", "secrets.toml")
 def load_db_config():
     """Loads database config from Streamlit secrets.toml or environment variables."""
     # Attempt to load from Streamlit secrets (which are parsed by Streamlit automatically in st.secrets)
-    if "postgres" in st.secrets:
-        return st.secrets["postgres"]
+    try:
+        if "postgres" in st.secrets:
+            return st.secrets["postgres"]
+    except Exception:
+        # No secrets.toml found — fall through to env vars
+        pass
         
     # Manual parsing of secrets.toml if st.secrets is not populated (e.g. CLI run of sub-scripts)
     if os.path.exists(SECRETS_PATH):
