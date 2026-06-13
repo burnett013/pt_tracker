@@ -85,10 +85,12 @@ def render_auth_sidebar():
 
 def verify_access():
     """
-    Verifies if the current authenticated user belongs to the 'approved_users' group.
+    Verifies if the current authenticated user belongs to the 'approved_users' group
+    or is explicitly whitelisted in the ALLOWED_USERS environment variable or secrets config.
     Halts Streamlit page execution and shows an Access Denied message if unauthorized.
     """
     user = get_logged_in_user()
+    user_email = (user.get("email") or "").strip().lower()
     
     # In Posit Connect, groups are passed in the 'X-Auth-Groups' header (comma-separated list)
     headers = st.context.headers
@@ -97,18 +99,34 @@ def verify_access():
     # Clean the groups list (lowercase for comparison)
     user_groups = [g.strip().lower() for g in raw_groups.split(",") if g.strip()]
     
+    # Whitelist check (essential for environments like Connect Cloud Free tier that do not support groups)
+    import os
+    allowed_emails = []
+    
+    # 1. Load from st.secrets if present
+    if "auth" in st.secrets and "allowed_emails" in st.secrets["auth"]:
+        allowed_emails.extend([e.strip().lower() for e in st.secrets["auth"]["allowed_emails"]])
+        
+    # 2. Load from ALLOWED_USERS environment variable if present
+    allowed_env = os.environ.get("ALLOWED_USERS", "")
+    if allowed_env:
+        allowed_emails.extend([e.strip().lower() for e in allowed_env.split(",") if e.strip()])
+        
     # Local fallback logic for developers
     if user.get("is_mock"):
         # Retrieve the checkbox status from session state (defaults to True)
         if st.session_state.get("dev_user_approved", True):
             user_groups.append("approved_users")
             
-    if "approved_users" not in user_groups:
+    # Grant access if user is in the approved group OR explicitly whitelisted by email
+    is_authorized = ("approved_users" in user_groups) or (user_email and user_email in allowed_emails)
+    
+    if not is_authorized:
         st.markdown("""
         <div style="padding: 2rem; background-color: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: 8px; margin-top: 2rem;">
             <h2 style="color: #ef4444; margin-top: 0; font-weight: 700;">⛔ Access Denied</h2>
             <p>You do not have permission to view the <strong>Anti-Amyloid Patient Tracking App</strong>.</p>
-            <p>Your user account must be a member of the <strong>approved_users</strong> security group in Microsoft Entra ID.</p>
+            <p>Your user account must be whitelisted or belong to the <strong>approved_users</strong> security group in Microsoft Entra ID.</p>
             <hr style="border: 0; border-top: 1px solid rgba(239, 68, 68, 0.2); margin: 1.5rem 0;" />
             <p style="font-size: 0.85rem; opacity: 0.8;">If you believe this is an error, please contact your clinical IT administrator or study coordinator.</p>
         </div>
