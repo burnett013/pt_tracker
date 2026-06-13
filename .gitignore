@@ -1,0 +1,14 @@
+# Streamlit secrets (Sensitive DB credentials)
+.streamlit/secrets.toml
+
+# Python cache & virtual environments
+__pycache__/
+*.pyc
+.venv/
+venv/
+env/
+
+# System files
+.DS_Store
+.DS_Store?
+Thumbs.db
