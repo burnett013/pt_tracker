@@ -4,7 +4,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import streamlit as st
 import datetime
-from services.auth import render_auth_sidebar, get_logged_in_user, verify_access
+
 from services.ui_components import apply_custom_css
 from services.schedule_logic import get_next_infusion_number, mri_required_before_next_infusion, calculate_next_infusion_date
 from services.dashboard_logic import evaluate_patient_status
@@ -12,10 +12,8 @@ from db.queries import get_patient_overview, record_infusion
 
 st.set_page_config(page_title="Log Infusion | Anti-Amyloid Tracker", page_icon="💉", layout="wide")
 apply_custom_css()
-render_auth_sidebar()
-verify_access()
 
-user = get_logged_in_user()
+user = {"email": "demo@clinic.local", "username": "demo_user", "name": "Demo User"}
 
 st.title("💉 Log Infusion Event")
 st.caption("Record a completed infusion for a patient and track scheduling/reactions.")

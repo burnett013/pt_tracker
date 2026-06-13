@@ -3,17 +3,15 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import streamlit as st
-from services.auth import render_auth_sidebar, get_logged_in_user, verify_access
+
 from services.ui_components import apply_custom_css
 from services.validation import clean_mrn, is_valid_mrn
 from db.queries import enroll_patient, get_patient_overview
 
 st.set_page_config(page_title="Patient Enrollment | Anti-Amyloid Tracker", page_icon="➕", layout="wide")
 apply_custom_css()
-render_auth_sidebar()
-verify_access()
 
-user = get_logged_in_user()
+user = {"email": "demo@clinic.local", "username": "demo_user", "name": "Demo User"}
 
 st.title("➕ Patient Enrollment")
 st.caption("Enroll a new patient into the tracking registry using the Medical Record Number (MRN) only.")

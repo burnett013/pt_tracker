@@ -3,7 +3,6 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import streamlit as st
-from services.auth import render_auth_sidebar, verify_access
 from services.ui_components import apply_custom_css
 
 # Page Configuration
@@ -16,8 +15,6 @@ st.set_page_config(
 
 # Apply styling
 apply_custom_css()
-render_auth_sidebar()
-verify_access()
 
 # Welcome Header
 st.title("🧬 Anti-Amyloid Patient Tracking System")

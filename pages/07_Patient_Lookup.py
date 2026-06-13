@@ -4,16 +4,14 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import streamlit as st
 import pandas as pd
-from services.auth import render_auth_sidebar, get_logged_in_user, verify_access
+
 from services.ui_components import apply_custom_css, render_badge
 from db.queries import get_patient_overview, get_patient_history
 
 st.set_page_config(page_title="Patient Lookup | Anti-Amyloid Tracker", page_icon="🔍", layout="wide")
 apply_custom_css()
-render_auth_sidebar()
-verify_access()
 
-user = get_logged_in_user()
+user = {"email": "demo@clinic.local", "username": "demo_user", "name": "Demo User"}
 
 st.title("🔍 Patient Lookup & History Timeline")
 st.caption("Search for a patient by MRN to view their profile, therapy schedule, and chronological event audit trails.")

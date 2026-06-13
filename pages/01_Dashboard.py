@@ -5,17 +5,15 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import streamlit as st
 import pandas as pd
 import datetime
-from services.auth import render_auth_sidebar, get_logged_in_user, verify_access
+
 from services.ui_components import apply_custom_css, render_badge, render_action_card
 from services.dashboard_logic import evaluate_patient_status
 from db.queries import get_patient_overview, update_therapy_status
 
 st.set_page_config(page_title="Dashboard | Anti-Amyloid Tracker", page_icon="📊", layout="wide")
 apply_custom_css()
-render_auth_sidebar()
-verify_access()
 
-user = get_logged_in_user()
+user = {"email": "demo@clinic.local", "username": "demo_user", "name": "Demo User"}
 
 st.title("📊 Clinical Worklist & Dashboard")
 st.caption("Central landing dashboard for patient surveillance and action planning.")
