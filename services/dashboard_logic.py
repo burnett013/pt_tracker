@@ -68,7 +68,10 @@ def evaluate_patient_status(patient: dict, current_date: datetime.date = None) -
         infusion_due_soon = next_inf_date <= current_date + datetime.timedelta(days=7)
         
     # 4. Active ARIA details
-    has_active_aria = patient.get("last_aria_status") == "active"
+    # UPGRADE 4: 'active', 'improved', and 'worsened' all keep the patient under ARIA monitoring.
+    # Only 'resolved' clears the active ARIA flag.
+    last_aria_status = patient.get("last_aria_status")
+    has_active_aria = last_aria_status in ("active", "improved", "worsened")
     
     # Monthly MRI check
     # Required if they have active ARIA, monthly_mri_required is True, and they haven't had an MRI in the last 30 days
@@ -93,6 +96,13 @@ def evaluate_patient_status(patient: dict, current_date: datetime.date = None) -
             if not last_mri_date or last_mri_date <= discon_date:
                 discontinued_mri_pending = True
                 
+    # 6.5. Phone call action flag (UPGRADE 1)
+    phone_call_action_required = False
+    last_call_outcome = patient.get("last_call_outcome")
+    call_follow_up_required = patient.get("call_follow_up_required", False)
+    if last_call_outcome in ("reached - new symptoms", "reached - escalated") or call_follow_up_required:
+        phone_call_action_required = True
+                
     # 7. Evaluate if the patient needs action this week
     # A patient needs action if any of the following are True:
     reasons = []
@@ -110,6 +120,8 @@ def evaluate_patient_status(patient: dict, current_date: datetime.date = None) -
         reasons.append("Premedication reminder active (prior reaction)")
     if discontinued_mri_pending:
         reasons.append("Post-discontinuation follow-up MRI required")
+    if phone_call_action_required:
+        reasons.append("Phone call follow-up or symptom escalation action required")
         
     needs_action = len(reasons) > 0
     
@@ -128,6 +140,7 @@ def evaluate_patient_status(patient: dict, current_date: datetime.date = None) -
         "monthly_mri_due": monthly_mri_due,
         "has_prior_reaction": has_prior_reaction,
         "discontinued_mri_pending": discontinued_mri_pending,
+        "phone_call_action_required": phone_call_action_required,
         "needs_action": needs_action,
         "action_reasons": reasons
     }

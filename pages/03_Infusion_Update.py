@@ -103,8 +103,12 @@ with st.form("infusion_form"):
     
     infusion_date = st.date_input("Infusion Administration Date*", value=datetime.date.today())
     
-    reaction_occurred = st.checkbox("Infusion Reaction Occurred", value=False, 
-                                    help="Check this if the patient experienced any adverse reaction during or immediately after the infusion.")
+    reaction_severity = st.selectbox(
+        "Infusion Reaction Severity",
+        options=["none", "mild", "moderate", "severe", "anaphylaxis"],
+        format_func=lambda s: s.title(),
+        help="Select the severity of any adverse reaction during or immediately after the infusion."
+    )
     
     notes = st.text_area("Infusion Notes", placeholder="Record vitals, reaction details, or clinical observations...")
     
@@ -119,12 +123,13 @@ if submitted:
     else:
         try:
             # Insert the infusion record
+            premedication_reminder = (reaction_severity != 'none')
             infusion_pk = record_infusion(
                 patient_pk=patient['patient_pk'],
                 infusion_number=next_num,
                 infusion_date=infusion_date,
-                infusion_reaction=reaction_occurred,
-                premedication_reminder=reaction_occurred, # Reaction triggers a premedication reminder for future infusions
+                reaction_severity=reaction_severity,
+                premedication_reminder=premedication_reminder,
                 notes=notes,
                 user_email=user['email']
             )

@@ -63,12 +63,20 @@ with st.form("aria_form"):
         aria_h = st.checkbox("ARIA-H Present (microhemorrhage/hemosiderosis)", value=False)
         
     with col_severities:
-        st.markdown("**Radiographic & Symptom Severity**")
-        radio_severity = st.selectbox(
-            "Radiographic Severity*",
+        st.markdown("**Radiographic Severity**")
+        radio_severity_e = st.selectbox(
+            "ARIA-E Radiographic Severity",
             options=["mild", "moderate", "severe"],
-            format_func=lambda s: s.title()
+            format_func=lambda s: s.title(),
+            help="Only applies if ARIA-E is checked."
         )
+        radio_severity_h = st.selectbox(
+            "ARIA-H Radiographic Severity",
+            options=["mild", "moderate", "severe"],
+            format_func=lambda s: s.title(),
+            help="Only applies if ARIA-H is checked."
+        )
+        st.markdown("**Symptom Severity**")
         symptom_severity = st.selectbox(
             "Clinical Symptom Severity*",
             options=["none", "mild", "moderate", "severe"],
@@ -82,9 +90,9 @@ with st.form("aria_form"):
     with col_action1:
         aria_status = st.selectbox(
             "ARIA Event Status*",
-            options=["active", "inactive"],
+            options=["active", "improved", "worsened", "resolved"],
             format_func=lambda s: s.title(),
-            help="Select 'Active' for new/ongoing occurrences, or 'Inactive' if resolved."
+            help="Active: new/ongoing. Improved: getting better but not resolved. Worsened: deteriorating. Resolved: fully cleared."
         )
         
         therapy_status = st.selectbox(
@@ -109,13 +117,16 @@ if submitted:
     if not (aria_e or aria_h):
         st.error("Error: You must select at least one ARIA type (ARIA-E or ARIA-H).")
     else:
+        severity_e = radio_severity_e if aria_e else None
+        severity_h = radio_severity_h if aria_h else None
         try:
             event_pk = record_aria_event(
                 patient_pk=patient['patient_pk'],
                 aria_date=aria_date,
                 aria_e=aria_e,
                 aria_h=aria_h,
-                radiographic_severity=radio_severity,
+                radiographic_severity_e=severity_e,
+                radiographic_severity_h=severity_h,
                 symptom_severity=symptom_severity,
                 status=aria_status,
                 therapy_status=therapy_status,

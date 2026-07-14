@@ -94,7 +94,7 @@ def get_patient_overview(mrn=None):
         ORDER BY patient_pk, infusion_number DESC, infusion_date DESC
     ),
     reaction_summary AS (
-        SELECT patient_pk, bool_or(infusion_reaction) as has_prior_reaction
+        SELECT patient_pk, bool_or(reaction_severity != 'none') as has_prior_reaction
         FROM infusions
         GROUP BY patient_pk
     ),
@@ -112,6 +112,11 @@ def get_patient_overview(mrn=None):
         SELECT DISTINCT ON (patient_pk) *
         FROM discontinuation_events
         ORDER BY patient_pk, discontinuation_date DESC, created_at DESC
+    ),
+    latest_phone_call AS (
+        SELECT DISTINCT ON (patient_pk) *
+        FROM phone_calls
+        ORDER BY patient_pk, call_date DESC, created_at DESC
     )
     SELECT 
         p.patient_pk,
@@ -138,13 +143,17 @@ def get_patient_overview(mrn=None):
         COALESCE(a.monthly_mri_required, FALSE) as monthly_mri_required,
         d.discontinuation_date,
         d.reason as discontinuation_reason,
-        COALESCE(d.follow_up_mri_required, FALSE) as follow_up_mri_required
+        COALESCE(d.follow_up_mri_required, FALSE) as follow_up_mri_required,
+        c.call_date as last_call_date,
+        c.call_outcome as last_call_outcome,
+        COALESCE(c.follow_up_required, FALSE) as call_follow_up_required
     FROM patients p
     LEFT JOIN latest_infusion i ON p.patient_pk = i.patient_pk
     LEFT JOIN reaction_summary r ON p.patient_pk = r.patient_pk
     LEFT JOIN latest_mri m ON p.patient_pk = m.patient_pk
     LEFT JOIN latest_aria a ON p.patient_pk = a.patient_pk
     LEFT JOIN latest_discon d ON p.patient_pk = d.patient_pk
+    LEFT JOIN latest_phone_call c ON p.patient_pk = c.patient_pk
     """
     
     params = []
@@ -174,39 +183,37 @@ def enroll_patient(mrn, drug, apoe_status, baseline_mri_done, cms_registry_numbe
     res = execute_transaction([(query, params)], user_email)
     return res[0][0] if res else None
 
-def record_infusion(patient_pk, infusion_number, infusion_date, infusion_reaction, premedication_reminder, notes, user_email):
-    """Records a patient infusion event and updates relevant indicators."""
+def record_infusion(patient_pk, infusion_number, infusion_date, reaction_severity, premedication_reminder, notes, user_email):
+    """Records a patient infusion event with reaction severity rating."""
     query = """
-    INSERT INTO infusions (patient_pk, infusion_number, infusion_date, infusion_reaction, premedication_reminder, notes, created_by)
+    INSERT INTO infusions (patient_pk, infusion_number, infusion_date, reaction_severity, premedication_reminder, notes, created_by)
     VALUES (%s, %s, %s, %s, %s, %s, %s)
     RETURNING infusion_pk;
     """
-    params = (patient_pk, infusion_number, infusion_date, infusion_reaction, premedication_reminder, notes, user_email)
+    params = (patient_pk, infusion_number, infusion_date, reaction_severity, premedication_reminder, notes, user_email)
     res = execute_transaction([(query, params)], user_email)
     return res[0][0] if res else None
 
-def record_mri(patient_pk, mri_date, mri_type, aria_e_present, aria_h_present, other_findings, 
+def record_mri(patient_pk, mri_date, mri_type, no_aria_confirmed, aria_e_present, aria_h_present, other_findings, 
                other_findings_details, proceed_to_next_infusion, aria_e_status, aria_h_status, 
-               revert_to_original_mri_schedule, restart_mri_schedule, notes, user_email):
-    """Records an MRI scan event."""
+               revert_to_original_mri_schedule, restart_mri_schedule, unscheduled_reason, notes, user_email):
+    """Records an MRI scan event with support for no-ARIA confirmation and unscheduled surveillance."""
     
-    # If the user answered "yes" to proceed to next infusion, and there's active ARIA, 
-    # and they choose to restart the MRI schedule or revert to original, we handle database status updates.
     queries = []
     
     # Insert the MRI record
     mri_query = """
     INSERT INTO mris (
-        patient_pk, mri_date, mri_type, aria_e_present, aria_h_present, other_findings, 
+        patient_pk, mri_date, mri_type, no_aria_confirmed, aria_e_present, aria_h_present, other_findings, 
         other_findings_details, proceed_to_next_infusion, aria_e_status, aria_h_status, 
-        revert_to_original_mri_schedule, restart_mri_schedule, notes, created_by
-    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        revert_to_original_mri_schedule, restart_mri_schedule, unscheduled_reason, notes, created_by
+    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
     RETURNING mri_pk;
     """
     mri_params = (
-        patient_pk, mri_date, mri_type, aria_e_present, aria_h_present, other_findings,
+        patient_pk, mri_date, mri_type, no_aria_confirmed, aria_e_present, aria_h_present, other_findings,
         other_findings_details, proceed_to_next_infusion, aria_e_status, aria_h_status,
-        revert_to_original_mri_schedule, restart_mri_schedule, notes, user_email
+        revert_to_original_mri_schedule, restart_mri_schedule, unscheduled_reason, notes, user_email
     )
     queries.append((mri_query, mri_params))
     
@@ -219,21 +226,21 @@ def record_mri(patient_pk, mri_date, mri_type, aria_e_present, aria_h_present, o
     res = execute_transaction(queries, user_email)
     return res[0][0] if res else None
 
-def record_aria_event(patient_pk, aria_date, aria_e, aria_h, radiographic_severity, 
+def record_aria_event(patient_pk, aria_date, aria_e, aria_h, radiographic_severity_e, radiographic_severity_h,
                       symptom_severity, status, therapy_status, monthly_mri_required, notes, user_email):
-    """Records an ARIA event and updates the patient's overall therapy status in a single transaction."""
+    """Records an ARIA event with separate E/H radiographic severities and updates the patient's overall therapy status."""
     queries = []
     
     # Insert the ARIA event
     aria_query = """
     INSERT INTO aria_events (
-        patient_pk, aria_date, aria_e, aria_h, radiographic_severity, 
+        patient_pk, aria_date, aria_e, aria_h, radiographic_severity_e, radiographic_severity_h,
         symptom_severity, status, therapy_status, monthly_mri_required, notes, created_by
-    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
     RETURNING aria_event_pk;
     """
     aria_params = (
-        patient_pk, aria_date, aria_e, aria_h, radiographic_severity,
+        patient_pk, aria_date, aria_e, aria_h, radiographic_severity_e, radiographic_severity_h,
         symptom_severity, status, therapy_status, monthly_mri_required, notes, user_email
     )
     queries.append((aria_query, aria_params))
@@ -276,6 +283,31 @@ def record_discontinuation(patient_pk, discontinuation_date, reason, other_reaso
     res = execute_transaction(queries, user_email)
     return res[0][0] if res else None
 
+def record_phone_call(patient_pk, call_date, call_reason, call_outcome, follow_up_required, notes, user_email):
+    """Records a follow-up phone call for a patient."""
+    query = """
+    INSERT INTO phone_calls (
+        patient_pk, call_date, call_reason, call_outcome, follow_up_required, notes, created_by
+    ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+    RETURNING phone_call_pk;
+    """
+    params = (patient_pk, call_date, call_reason, call_outcome, follow_up_required, notes, user_email)
+    res = execute_transaction([(query, params)], user_email)
+    return res[0][0] if res else None
+
+def get_phone_calls_by_patient(patient_pk):
+    """Retrieves all phone call records for a patient, newest first."""
+    conn = get_connection()
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("""
+                SELECT phone_call_pk, call_date, call_reason, call_outcome, follow_up_required, notes, created_at, created_by
+                FROM phone_calls WHERE patient_pk = %s ORDER BY call_date DESC, created_at DESC;
+            """, (patient_pk,))
+            return cur.fetchall()
+    finally:
+        conn.close()
+
 def get_patient_history(patient_pk):
     """
     Retrieves the complete historical timelines for a patient across all tracking events.
@@ -285,23 +317,24 @@ def get_patient_history(patient_pk):
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             # 1. Get infusions
             cur.execute("""
-                SELECT infusion_pk, infusion_number, infusion_date, infusion_reaction, premedication_reminder, notes, created_at, created_by
+                SELECT infusion_pk, infusion_number, infusion_date, reaction_severity, premedication_reminder, notes, created_at, created_by
                 FROM infusions WHERE patient_pk = %s ORDER BY infusion_number DESC, infusion_date DESC;
             """, (patient_pk,))
             infusions = cur.fetchall()
             
             # 2. Get MRIs
             cur.execute("""
-                SELECT mri_pk, mri_date, mri_type, aria_e_present, aria_h_present, other_findings, 
+                SELECT mri_pk, mri_date, mri_type, no_aria_confirmed, aria_e_present, aria_h_present, other_findings, 
                        other_findings_details, proceed_to_next_infusion, aria_e_status, aria_h_status, 
-                       revert_to_original_mri_schedule, restart_mri_schedule, notes, created_at, created_by
+                       revert_to_original_mri_schedule, restart_mri_schedule, unscheduled_reason, notes, created_at, created_by
                 FROM mris WHERE patient_pk = %s ORDER BY mri_date DESC, created_at DESC;
             """, (patient_pk,))
             mris = cur.fetchall()
             
             # 3. Get ARIA events
             cur.execute("""
-                SELECT aria_event_pk, aria_date, aria_e, aria_h, radiographic_severity, symptom_severity, status, therapy_status, monthly_mri_required, notes, created_at, created_by
+                SELECT aria_event_pk, aria_date, aria_e, aria_h, radiographic_severity_e, radiographic_severity_h, 
+                       symptom_severity, status, therapy_status, monthly_mri_required, notes, created_at, created_by
                 FROM aria_events WHERE patient_pk = %s ORDER BY aria_date DESC, created_at DESC;
             """, (patient_pk,))
             arias = cur.fetchall()
@@ -313,7 +346,14 @@ def get_patient_history(patient_pk):
             """, (patient_pk,))
             discon = cur.fetchall()
             
-            # 5. Get audit logs
+            # 5. Get phone calls
+            cur.execute("""
+                SELECT phone_call_pk, call_date, call_reason, call_outcome, follow_up_required, notes, created_at, created_by
+                FROM phone_calls WHERE patient_pk = %s ORDER BY call_date DESC, created_at DESC;
+            """, (patient_pk,))
+            calls = cur.fetchall()
+            
+            # 6. Get audit logs
             cur.execute("""
                 SELECT audit_pk, table_name, record_pk, action, changed_by, changed_at, old_value, new_value
                 FROM audit_log
@@ -322,8 +362,9 @@ def get_patient_history(patient_pk):
                    OR (table_name = 'mris' AND record_pk IN (SELECT mri_pk::text FROM mris WHERE patient_pk = %s))
                    OR (table_name = 'aria_events' AND record_pk IN (SELECT aria_event_pk::text FROM aria_events WHERE patient_pk = %s))
                    OR (table_name = 'discontinuation_events' AND record_pk IN (SELECT discontinuation_pk::text FROM discontinuation_events WHERE patient_pk = %s))
+                   OR (table_name = 'phone_calls' AND record_pk IN (SELECT phone_call_pk::text FROM phone_calls WHERE patient_pk = %s))
                 ORDER BY changed_at DESC;
-            """, (str(patient_pk), patient_pk, patient_pk, patient_pk, patient_pk))
+            """, (str(patient_pk), patient_pk, patient_pk, patient_pk, patient_pk, patient_pk))
             audit = cur.fetchall()
             
             return {
@@ -331,6 +372,7 @@ def get_patient_history(patient_pk):
                 "mris": mris,
                 "aria_events": arias,
                 "discontinuations": discon,
+                "phone_calls": calls,
                 "audit_logs": audit
             }
     finally:

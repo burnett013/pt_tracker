@@ -55,14 +55,20 @@ with st.form("mri_form"):
     
     col_type, col_date = st.columns(2)
     with col_type:
-        mri_type = st.selectbox("MRI Type*", options=["scheduled surveillance", "ARIA follow-up"])
+        mri_type = st.selectbox("MRI Type*", options=["scheduled surveillance", "ARIA follow-up", "unscheduled surveillance"])
     with col_date:
         mri_date = st.date_input("MRI Scan Date*", value=datetime.date.today())
         
+    unscheduled_reason = None
+    if mri_type == "unscheduled surveillance":
+        unscheduled_reason = st.text_input("Reason for Unscheduled Scan*", placeholder="e.g., headache, new neurological symptoms, fall...")
+
     st.markdown("---")
     st.markdown("#### Radiographic Findings")
     col_findings1, col_findings2 = st.columns(2)
     with col_findings1:
+        no_aria = st.checkbox("✅ No ARIA on this scan", value=False,
+                              help="Check this to confirm no ARIA was found on this scan. ARIA-E and ARIA-H will be set to negative.")
         aria_e = st.checkbox("ARIA-E Present (vasogenic edema/sulcal effusion)", value=False)
         aria_h = st.checkbox("ARIA-H Present (microhemorrhages/hemosiderosis)", value=False)
     with col_findings2:
@@ -109,15 +115,23 @@ with st.form("mri_form"):
     submitted = st.form_submit_button("Record MRI scan")
 
 if submitted:
+    # If 'No ARIA' confirmed, force ARIA flags to False
+    if no_aria:
+        aria_e = False
+        aria_h = False
+
     # Validate other findings details
     if other_findings and not other_details.strip():
         st.error("Error: Please provide details for the 'Other Findings Present' selection.")
+    elif mri_type == "unscheduled surveillance" and not (unscheduled_reason and unscheduled_reason.strip()):
+        st.error("Error: Please provide a reason for the unscheduled scan.")
     else:
         try:
             mri_pk = record_mri(
                 patient_pk=patient['patient_pk'],
                 mri_date=mri_date,
                 mri_type=mri_type,
+                no_aria_confirmed=no_aria,
                 aria_e_present=aria_e,
                 aria_h_present=aria_h,
                 other_findings=other_findings,
@@ -127,6 +141,7 @@ if submitted:
                 aria_h_status=aria_h_status,
                 revert_to_original_mri_schedule=revert_schedule,
                 restart_mri_schedule=restart_schedule,
+                unscheduled_reason=unscheduled_reason,
                 notes=notes,
                 user_email=user['email']
             )

@@ -5,6 +5,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Drop tables if they exist (clean setup)
 DROP TABLE IF EXISTS audit_log CASCADE;
+DROP TABLE IF EXISTS phone_calls CASCADE;
 DROP TABLE IF EXISTS discontinuation_events CASCADE;
 DROP TABLE IF EXISTS aria_events CASCADE;
 DROP TABLE IF EXISTS mris CASCADE;
@@ -30,12 +31,13 @@ CREATE TABLE patients (
 );
 
 -- 2. Infusions Table
+--    UPGRADE 6: replaced infusion_reaction BOOLEAN with reaction_severity TEXT enum
 CREATE TABLE infusions (
     infusion_pk UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     patient_pk UUID NOT NULL REFERENCES patients(patient_pk) ON DELETE CASCADE,
     infusion_number INTEGER NOT NULL,
     infusion_date DATE NOT NULL,
-    infusion_reaction BOOLEAN NOT NULL DEFAULT FALSE,
+    reaction_severity TEXT NOT NULL DEFAULT 'none' CHECK (reaction_severity IN ('none', 'mild', 'moderate', 'severe', 'anaphylaxis')),
     premedication_reminder BOOLEAN NOT NULL DEFAULT FALSE,
     notes TEXT,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -45,11 +47,14 @@ CREATE TABLE infusions (
 );
 
 -- 3. MRIs Table
+--    UPGRADE 3: added no_aria_confirmed BOOLEAN
+--    UPGRADE 5: added 'unscheduled surveillance' to mri_type CHECK, added unscheduled_reason TEXT
 CREATE TABLE mris (
     mri_pk UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     patient_pk UUID NOT NULL REFERENCES patients(patient_pk) ON DELETE CASCADE,
     mri_date DATE NOT NULL,
-    mri_type TEXT NOT NULL CHECK (mri_type IN ('scheduled surveillance', 'ARIA follow-up')),
+    mri_type TEXT NOT NULL CHECK (mri_type IN ('scheduled surveillance', 'ARIA follow-up', 'unscheduled surveillance')),
+    no_aria_confirmed BOOLEAN DEFAULT FALSE,
     aria_e_present BOOLEAN,
     aria_h_present BOOLEAN,
     other_findings BOOLEAN,
@@ -59,21 +64,25 @@ CREATE TABLE mris (
     aria_h_status TEXT CHECK (aria_h_status IN ('stable', 'worsened', 'resolved')),
     revert_to_original_mri_schedule BOOLEAN,
     restart_mri_schedule BOOLEAN,
+    unscheduled_reason TEXT,
     notes TEXT,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_by TEXT
 );
 
 -- 4. ARIA Events Table
+--    UPGRADE 2: replaced single radiographic_severity with radiographic_severity_e and radiographic_severity_h
+--    UPGRADE 4: expanded status CHECK from ('active','inactive') to ('active','improved','worsened','resolved')
 CREATE TABLE aria_events (
     aria_event_pk UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     patient_pk UUID NOT NULL REFERENCES patients(patient_pk) ON DELETE CASCADE,
     aria_date DATE NOT NULL,
     aria_e BOOLEAN,
     aria_h BOOLEAN,
-    radiographic_severity TEXT CHECK (radiographic_severity IN ('mild', 'moderate', 'severe')),
+    radiographic_severity_e TEXT CHECK (radiographic_severity_e IN ('mild', 'moderate', 'severe')),
+    radiographic_severity_h TEXT CHECK (radiographic_severity_h IN ('mild', 'moderate', 'severe')),
     symptom_severity TEXT CHECK (symptom_severity IN ('none', 'mild', 'moderate', 'severe')),
-    status TEXT NOT NULL CHECK (status IN ('active', 'inactive')),
+    status TEXT NOT NULL CHECK (status IN ('active', 'improved', 'worsened', 'resolved')),
     therapy_status TEXT NOT NULL CHECK (therapy_status IN ('continue', 'hold', 'discontinue')),
     monthly_mri_required BOOLEAN NOT NULL DEFAULT FALSE,
     notes TEXT,
@@ -104,7 +113,36 @@ CREATE TABLE discontinuation_events (
     created_by TEXT
 );
 
--- 6. Audit Log Table
+-- 6. Phone Calls Table (UPGRADE 1: new table for follow-up phone call logging)
+CREATE TABLE phone_calls (
+    phone_call_pk UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    patient_pk UUID NOT NULL REFERENCES patients(patient_pk) ON DELETE CASCADE,
+    call_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    call_reason TEXT NOT NULL CHECK (
+        call_reason IN (
+            'ARIA follow-up',
+            'infusion reaction follow-up',
+            'scheduling',
+            'symptom check',
+            'other'
+        )
+    ),
+    call_outcome TEXT NOT NULL CHECK (
+        call_outcome IN (
+            'reached - no concerns',
+            'reached - new symptoms',
+            'reached - escalated',
+            'voicemail left',
+            'no answer'
+        )
+    ),
+    follow_up_required BOOLEAN NOT NULL DEFAULT FALSE,
+    notes TEXT,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by TEXT
+);
+
+-- 7. Audit Log Table
 CREATE TABLE audit_log (
     audit_pk UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     table_name TEXT NOT NULL,
@@ -134,6 +172,7 @@ BEGIN
             WHEN 'mris' THEN rec_pk := NEW.mri_pk::text;
             WHEN 'aria_events' THEN rec_pk := NEW.aria_event_pk::text;
             WHEN 'discontinuation_events' THEN rec_pk := NEW.discontinuation_pk::text;
+            WHEN 'phone_calls' THEN rec_pk := NEW.phone_call_pk::text;
         END CASE;
     ELSIF TG_OP = 'UPDATE' THEN
         old_val := to_jsonb(OLD);
@@ -144,6 +183,7 @@ BEGIN
             WHEN 'mris' THEN rec_pk := NEW.mri_pk::text;
             WHEN 'aria_events' THEN rec_pk := NEW.aria_event_pk::text;
             WHEN 'discontinuation_events' THEN rec_pk := NEW.discontinuation_pk::text;
+            WHEN 'phone_calls' THEN rec_pk := NEW.phone_call_pk::text;
         END CASE;
     ELSIF TG_OP = 'DELETE' THEN
         old_val := to_jsonb(OLD);
@@ -153,6 +193,7 @@ BEGIN
             WHEN 'mris' THEN rec_pk := OLD.mri_pk::text;
             WHEN 'aria_events' THEN rec_pk := OLD.aria_event_pk::text;
             WHEN 'discontinuation_events' THEN rec_pk := OLD.discontinuation_pk::text;
+            WHEN 'phone_calls' THEN rec_pk := OLD.phone_call_pk::text;
         END CASE;
     END IF;
 
@@ -186,4 +227,8 @@ FOR EACH ROW EXECUTE FUNCTION audit_trigger_func();
 
 CREATE TRIGGER audit_discontinuation_events_trigger
 AFTER INSERT OR UPDATE OR DELETE ON discontinuation_events
+FOR EACH ROW EXECUTE FUNCTION audit_trigger_func();
+
+CREATE TRIGGER audit_phone_calls_trigger
+AFTER INSERT OR UPDATE OR DELETE ON phone_calls
 FOR EACH ROW EXECUTE FUNCTION audit_trigger_func();

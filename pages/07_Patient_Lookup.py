@@ -72,11 +72,12 @@ with col3:
 st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
 
 # Timelines Tabs
-tab_inf, tab_mri, tab_aria, tab_discon, tab_audit = st.tabs([
+tab_inf, tab_mri, tab_aria, tab_discon, tab_calls, tab_audit = st.tabs([
     "💉 Infusions History",
     "🧠 MRI Scans History",
     "⚠️ ARIA Events History",
     "❌ Discontinuation details",
+    "📞 Phone Call Log",
     "📋 Audit & Change Logs"
 ])
 
@@ -92,7 +93,7 @@ with tab_inf:
         display_df = pd.DataFrame()
         display_df['Infusion #'] = df_inf['infusion_number']
         display_df['Admin Date'] = df_inf['infusion_date'].apply(lambda d: d.strftime('%Y-%m-%d'))
-        display_df['Reaction Occurred?'] = df_inf['infusion_reaction'].apply(lambda b: '⚠️ YES' if b else 'No')
+        display_df['Reaction Severity'] = df_inf['reaction_severity'].apply(lambda s: s.title() if s and s != 'none' else 'None')
         display_df['Premedication Noted?'] = df_inf['premedication_reminder'].apply(lambda b: 'Yes' if b else 'No')
         display_df['Notes'] = df_inf['notes'].fillna('')
         display_df['Logged By'] = df_inf['created_by']
@@ -111,6 +112,7 @@ with tab_mri:
         display_df = pd.DataFrame()
         display_df['Scan Date'] = df_mri['mri_date'].apply(lambda d: d.strftime('%Y-%m-%d'))
         display_df['Scan Type'] = df_mri['mri_type'].str.title()
+        display_df['No ARIA Confirmed'] = df_mri['no_aria_confirmed'].apply(lambda b: '✅ Yes' if b else '-')
         display_df['ARIA-E Findings'] = df_mri['aria_e_present'].apply(lambda b: 'Edema Present' if b else 'None')
         display_df['ARIA-H Findings'] = df_mri['aria_h_present'].apply(lambda b: 'Hemorrhage Present' if b else 'None')
         display_df['Other Findings'] = df_mri['other_findings'].apply(lambda b: 'Yes' if b else 'No')
@@ -121,7 +123,10 @@ with tab_mri:
             display_df['ARIA-E Status'] = df_mri['aria_e_status'].fillna('-')
         if 'aria_h_status' in df_mri.columns:
             display_df['ARIA-H Status'] = df_mri['aria_h_status'].fillna('-')
-            
+
+        if 'unscheduled_reason' in df_mri.columns:
+            display_df['Unscheduled Reason'] = df_mri['unscheduled_reason'].fillna('-')
+
         display_df['Notes'] = df_mri['notes'].fillna('')
         display_df['Logged By'] = df_mri['created_by']
         
@@ -140,7 +145,8 @@ with tab_aria:
         display_df['Detection Date'] = df_aria['aria_date'].apply(lambda d: d.strftime('%Y-%m-%d'))
         display_df['ARIA-E?'] = df_aria['aria_e'].apply(lambda b: 'Yes' if b else 'No')
         display_df['ARIA-H?'] = df_aria['aria_h'].apply(lambda b: 'Yes' if b else 'No')
-        display_df['Radiographic Severity'] = df_aria['radiographic_severity'].str.title()
+        display_df['ARIA-E Severity'] = df_aria['radiographic_severity_e'].apply(lambda s: s.title() if s else '-')
+        display_df['ARIA-H Severity'] = df_aria['radiographic_severity_h'].apply(lambda s: s.title() if s else '-')
         display_df['Clinical Severity'] = df_aria['symptom_severity'].str.title()
         display_df['Event Status'] = df_aria['status'].str.upper()
         display_df['Therapy Status'] = df_aria['therapy_status'].str.upper()
@@ -169,7 +175,26 @@ with tab_discon:
         
         st.dataframe(display_df, use_container_width=True, hide_index=True)
 
-# 5. Audit Tab
+# 5. Phone Calls Tab
+with tab_calls:
+    st.subheader("Follow-up Phone Call Log")
+    calls = history.get("phone_calls", [])
+    
+    if not calls:
+        st.info("No phone call records found for this patient.")
+    else:
+        df_calls = pd.DataFrame(calls)
+        display_df = pd.DataFrame()
+        display_df['Call Date'] = df_calls['call_date'].apply(lambda d: d.strftime('%Y-%m-%d'))
+        display_df['Call Reason'] = df_calls['call_reason'].str.title()
+        display_df['Outcome'] = df_calls['call_outcome'].str.title()
+        display_df['Follow-up Required?'] = df_calls['follow_up_required'].apply(lambda b: '⚠️ Yes' if b else 'No')
+        display_df['Notes'] = df_calls['notes'].fillna('')
+        display_df['Logged By'] = df_calls['created_by']
+        
+        st.dataframe(display_df, use_container_width=True, hide_index=True)
+
+# 6. Audit Tab
 with tab_audit:
     st.subheader("Database Operations Audit Trail")
     audit = history.get("audit_logs", [])

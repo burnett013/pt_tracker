@@ -40,9 +40,10 @@ with col1:
     st.info("🧠 **04 MRI Update**  \nDocument scheduled surveillance scans or ARIA follow-up MRIs, noting safety outcomes and proceed/hold status.")
 
 with col2:
-    st.warning("⚠️ **05 ARIA Event**  \nLog ARIA-E or ARIA-H events, including radiographic/symptom severities, and initiate hold or monthly surveillance logic.")
+    st.warning("⚠️ **05 ARIA Event**  \nLog ARIA-E or ARIA-H events, including separate radiographic severities for each type, and initiate hold or monthly surveillance logic.")
     st.warning("❌ **06 Discontinuation Event**  \nDocument discontinuation reason (e.g., adverse events, progression) and flag if follow-up safety MRIs are required.")
-    st.success("🔍 **07 Patient Lookup**  \nSearch any patient by MRN to view their full chronological timeline of infusions, MRIs, ARIA logs, and audit logs.")
+    st.success("🔍 **07 Patient Lookup**  \nSearch any patient by MRN to view their full chronological timeline of infusions, MRIs, ARIA logs, phone calls, and audit logs.")
+    st.success("📞 **08 Phone Call Log**  \nDocument follow-up phone calls to patients, tracking call reason, outcome, and whether additional follow-up is required.")
 
 st.markdown("""
 ---
