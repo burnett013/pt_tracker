@@ -143,7 +143,42 @@ To review a patient's complete clinical timeline:
    * **🧠 MRI Scans History**: List of scanned dates, types, findings, and holds.
    * **⚠️ ARIA Events History**: Chronological log of ARIA events, severities, and status.
    * **❌ Discontinuation details**: Reasons and follow-up plans.
+   * **📞 Phone Calls**: Chronological history of follow-up calls, scheduled follow-up dates, and confirmation status.
    * **📋 Audit & Change Logs**: A human-readable history showing exactly **who** made changes to this patient's profile and **when**, outlining the exact changes (e.g. changing location from Talis to Vivo).
+
+---
+
+## 📞 8. How to Log and Track Phone Calls
+
+To document patient phone calls, link follow-ups, and track required actions:
+
+1. Select **Phone Call Log** in the sidebar.
+2. Select the patient's **MRN**. The app displays the patient's total call count and next sequential **Call ID** (e.g. `Call #1, Call #2`).
+3. **Follow-up Linking**:
+   * If this call is following up on a previous conversation, select the prior call from the **"Is this call a follow-up to a previous call?"** dropdown (or click the **"📞 Log Follow-up"** shortcut button directly on the prior call in the history table).
+   * Submitting a linked follow-up automatically marks the original call's **Follow-up Confirmed** as **Yes**.
+4. Enter the **Call Date** (formatted as `MM/DD/YYYY`), select the **Call Reason**, and record the **Call Outcome**.
+5. **Follow-up Tracking**:
+   * Select **Follow-up Required**: Choose **Yes** or **No**.
+   * If **Yes**, enter the scheduled **Follow-up Date** and specify **Follow-up Confirmed** (**Yes** or **No**).
+6. Add notes and click **Log Phone Call**.
+7. **Pending Follow-up Action List**: Under the patient's history, any unconfirmed follow-up calls are prominently displayed with quick buttons to either **Log Follow-up** (pre-linking the call in the form above) or directly mark **Follow-up Call Occurred**.
+
+---
+
+## 🤖 9. Clinical Copilot & AI Workflow Assistant
+
+To assist clinical coordinators, nurses, and neurologists in navigating the application and verifying complex protocol guidelines:
+
+1. Select **Clinical Copilot** in the sidebar (`pages/09_Clinical_Copilot.py`).
+2. Type any operational or clinical scheduling query in natural language (or tap one of the Quick Topic buttons):
+   * *"When are surveillance MRIs required for Lecanemab?"*
+   * *"What happens when an ARIA-E event is detected?"*
+   * *"How do I tie a follow-up phone call to a previous call?"*
+   * *"Why is the app blocking me from logging Infusion #3?"*
+3. **Safety & HIPAA Guardrail**:
+   * The Copilot is grounded strictly in clinical protocols and system rules.
+   * To ensure compliance with HIPAA, never enter patient names, dates of birth, or MRNs into the chat.
 
 ---
 
@@ -159,9 +194,10 @@ To review a patient's complete clinical timeline:
    ```
 3. Go to the Posit Connect Cloud dashboard and click **Republish** to pull the latest commit.
 
-### Environment Variables (Database)
-If the Neon database credentials change, update them in the Posit Connect Cloud dashboard under the app's settings → Environment Variables:
-- `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD`
+### Environment Variables
+Set these in the Posit Connect Cloud dashboard under the app's settings → Environment Variables:
+- Neon Database: `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD`
+- Gemini AI Copilot: `GEMINI_API_KEY` (Gemini API Key for the conversational assistant)
 
 ### Re-enabling Authentication
 To restore authentication for production use:

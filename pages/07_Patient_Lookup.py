@@ -66,7 +66,7 @@ with col2:
 
 with col3:
     st.markdown(f"**CMS Registry Number:** `{patient['cms_registry_number'] or 'N/A'}`")
-    st.markdown(f"**Enrolled At:** `{patient['enrolled_at'].strftime('%Y-%m-%d %H:%M:%S')}`")
+    st.markdown(f"**Enrolled At:** `{patient['enrolled_at'].strftime('%m/%d/%Y %H:%M:%S')}`")
     st.markdown(f"**Enrolled By:** `{patient['created_by'] or 'System'}`")
 
 st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
@@ -92,7 +92,7 @@ with tab_inf:
         df_inf = pd.DataFrame(infusions)
         display_df = pd.DataFrame()
         display_df['Infusion #'] = df_inf['infusion_number']
-        display_df['Admin Date'] = df_inf['infusion_date'].apply(lambda d: d.strftime('%Y-%m-%d'))
+        display_df['Admin Date'] = df_inf['infusion_date'].apply(lambda d: d.strftime('%m/%d/%Y'))
         display_df['Reaction Severity'] = df_inf['reaction_severity'].apply(lambda s: s.title() if s and s != 'none' else 'None')
         display_df['Premedication Noted?'] = df_inf['premedication_reminder'].apply(lambda b: 'Yes' if b else 'No')
         display_df['Notes'] = df_inf['notes'].fillna('')
@@ -110,7 +110,7 @@ with tab_mri:
     else:
         df_mri = pd.DataFrame(mris)
         display_df = pd.DataFrame()
-        display_df['Scan Date'] = df_mri['mri_date'].apply(lambda d: d.strftime('%Y-%m-%d'))
+        display_df['Scan Date'] = df_mri['mri_date'].apply(lambda d: d.strftime('%m/%d/%Y'))
         display_df['Scan Type'] = df_mri['mri_type'].str.title()
         display_df['No ARIA Confirmed'] = df_mri['no_aria_confirmed'].apply(lambda b: '✅ Yes' if b else '-')
         display_df['ARIA-E Findings'] = df_mri['aria_e_present'].apply(lambda b: 'Edema Present' if b else 'None')
@@ -142,7 +142,7 @@ with tab_aria:
     else:
         df_aria = pd.DataFrame(arias)
         display_df = pd.DataFrame()
-        display_df['Detection Date'] = df_aria['aria_date'].apply(lambda d: d.strftime('%Y-%m-%d'))
+        display_df['Detection Date'] = df_aria['aria_date'].apply(lambda d: d.strftime('%m/%d/%Y'))
         display_df['ARIA-E?'] = df_aria['aria_e'].apply(lambda b: 'Yes' if b else 'No')
         display_df['ARIA-H?'] = df_aria['aria_h'].apply(lambda b: 'Yes' if b else 'No')
         display_df['ARIA-E Severity'] = df_aria['radiographic_severity_e'].apply(lambda s: s.title() if s else '-')
@@ -166,7 +166,7 @@ with tab_discon:
     else:
         df_dis = pd.DataFrame(discon)
         display_df = pd.DataFrame()
-        display_df['Discon Date'] = df_dis['discontinuation_date'].apply(lambda d: d.strftime('%Y-%m-%d'))
+        display_df['Discon Date'] = df_dis['discontinuation_date'].apply(lambda d: d.strftime('%m/%d/%Y'))
         display_df['Reason'] = df_dis['reason'].str.upper()
         display_df['Other Reason Details'] = df_dis['other_reason_details'].fillna('-')
         display_df['Follow-up MRI Required?'] = df_dis['follow_up_mri_required'].apply(lambda b: 'Yes' if b else 'No')
@@ -185,10 +185,19 @@ with tab_calls:
     else:
         df_calls = pd.DataFrame(calls)
         display_df = pd.DataFrame()
-        display_df['Call Date'] = df_calls['call_date'].apply(lambda d: d.strftime('%Y-%m-%d'))
+        display_df['Call ID'] = df_calls['call_number'].apply(lambda n: f"Call #{n}")
+        display_df['Call Date'] = df_calls['call_date'].apply(lambda d: d.strftime('%m/%d/%Y'))
         display_df['Call Reason'] = df_calls['call_reason'].str.title()
         display_df['Outcome'] = df_calls['call_outcome'].str.title()
-        display_df['Follow-up Required?'] = df_calls['follow_up_required'].apply(lambda b: '⚠️ Yes' if b else 'No')
+        display_df['Linked To'] = df_calls.apply(
+            lambda r: f"Follow-up to Call #{r['parent_call_number']}" if pd.notnull(r.get('parent_call_number')) and r.get('parent_call_number') else 'Initial Call',
+            axis=1
+        )
+        display_df['Follow-up Required'] = df_calls['follow_up_required'].apply(lambda b: 'Yes' if b else 'No')
+        display_df['Follow-up Date'] = df_calls['follow_up_date'].apply(lambda d: d.strftime('%m/%d/%Y') if pd.notnull(d) and d else '-')
+        display_df['Follow-up Confirmed'] = df_calls.apply(
+            lambda r: 'Yes' if r['follow_up_confirmed'] else ('No' if r['follow_up_required'] else '-'), axis=1
+        )
         display_df['Notes'] = df_calls['notes'].fillna('')
         display_df['Logged By'] = df_calls['created_by']
         
@@ -229,7 +238,7 @@ with tab_audit:
 
         df_aud = pd.DataFrame(audit)
         display_df = pd.DataFrame()
-        display_df['Operation Time'] = df_aud['changed_at'].apply(lambda t: t.strftime('%Y-%m-%d %H:%M:%S'))
+        display_df['Operation Time'] = df_aud['changed_at'].apply(lambda t: t.strftime('%m/%d/%Y %H:%M:%S'))
         display_df['Table Affected'] = df_aud['table_name'].str.upper()
         display_df['Action'] = df_aud['action'].str.upper()
         display_df['User (Email)'] = df_aud['changed_by']

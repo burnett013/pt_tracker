@@ -117,6 +117,7 @@ CREATE TABLE discontinuation_events (
 CREATE TABLE phone_calls (
     phone_call_pk UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     patient_pk UUID NOT NULL REFERENCES patients(patient_pk) ON DELETE CASCADE,
+    call_number INTEGER NOT NULL,
     call_date DATE NOT NULL DEFAULT CURRENT_DATE,
     call_reason TEXT NOT NULL CHECK (
         call_reason IN (
@@ -137,9 +138,13 @@ CREATE TABLE phone_calls (
         )
     ),
     follow_up_required BOOLEAN NOT NULL DEFAULT FALSE,
+    follow_up_date DATE,
+    follow_up_confirmed BOOLEAN NOT NULL DEFAULT FALSE,
+    parent_call_pk UUID REFERENCES phone_calls(phone_call_pk) ON DELETE SET NULL,
     notes TEXT,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    created_by TEXT
+    created_by TEXT,
+    UNIQUE (patient_pk, call_number)
 );
 
 -- 7. Audit Log Table

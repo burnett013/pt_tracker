@@ -134,3 +134,13 @@ def render_action_card(title: str, body_html: str, badge_text: str = "", badge_t
         
     card_html += "</div>"
     st.markdown(card_html, unsafe_allow_html=True)
+
+def format_date(d, default: str = "-") -> str:
+    """Formats a date or datetime object to mm/dd/yyyy format."""
+    if d is None:
+        return default
+    try:
+        return d.strftime("%m/%d/%Y")
+    except Exception:
+        return str(d)
+

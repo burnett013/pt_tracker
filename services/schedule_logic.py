@@ -38,7 +38,10 @@ def calculate_next_infusion_date(last_infusion_date: datetime.date | None, drug:
     
     # Ensure it's a date object
     if isinstance(last_infusion_date, str):
-        last_infusion_date = datetime.datetime.strptime(last_infusion_date, "%Y-%m-%d").date()
+        try:
+            last_infusion_date = datetime.datetime.strptime(last_infusion_date, "%m/%d/%Y").date()
+        except ValueError:
+            last_infusion_date = datetime.datetime.strptime(last_infusion_date, "%Y-%m-%d").date()
         
     days = get_infusion_interval_days(drug)
     return last_infusion_date + datetime.timedelta(days=days)

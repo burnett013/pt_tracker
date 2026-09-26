@@ -57,7 +57,7 @@ with st.form("mri_form"):
     with col_type:
         mri_type = st.selectbox("MRI Type*", options=["scheduled surveillance", "ARIA follow-up", "unscheduled surveillance"])
     with col_date:
-        mri_date = st.date_input("MRI Scan Date*", value=datetime.date.today())
+        mri_date = st.date_input("MRI Scan Date*", value=datetime.date.today(), format="MM/DD/YYYY")
         
     unscheduled_reason = None
     if mri_type == "unscheduled surveillance":
@@ -147,7 +147,7 @@ if submitted:
             )
             
             if mri_pk:
-                st.success(f"🎉 **Success!** Recorded MRI scan for patient **{selected_mrn}** on **{mri_date.strftime('%Y-%m-%d')}**.")
+                st.success(f"🎉 **Success!** Recorded MRI scan for patient **{selected_mrn}** on **{mri_date.strftime('%m/%d/%Y')}**.")
                 if not proceed:
                     st.warning("⚠️ **Notice**: Patient has NOT been cleared to proceed. Therapy status has been automatically updated to **HOLD**.")
                 st.balloons()

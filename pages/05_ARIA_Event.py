@@ -47,14 +47,14 @@ with col1:
 with col2:
     st.markdown(f"**Prior ARIA Event:** `{'Yes' if patient['last_aria_date'] else 'No'}`")
     if patient['last_aria_date']:
-        st.markdown(f"**Prior ARIA Status:** `{patient['last_aria_status'].upper()}` (on {patient['last_aria_date'].strftime('%Y-%m-%d')})")
+        st.markdown(f"**Prior ARIA Status:** `{patient['last_aria_status'].upper()}` (on {patient['last_aria_date'].strftime('%m/%d/%Y')})")
 
 st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
 
 with st.form("aria_form"):
     st.markdown("### Log ARIA Details")
     
-    aria_date = st.date_input("ARIA Detection Date*", value=datetime.date.today())
+    aria_date = st.date_input("ARIA Detection Date*", value=datetime.date.today(), format="MM/DD/YYYY")
     
     col_types, col_severities = st.columns(2)
     with col_types:
@@ -136,7 +136,7 @@ if submitted:
             )
             
             if event_pk:
-                st.success(f"🎉 **Success!** Recorded ARIA event for patient **{selected_mrn}** on **{aria_date.strftime('%Y-%m-%d')}**.")
+                st.success(f"🎉 **Success!** Recorded ARIA event for patient **{selected_mrn}** on **{aria_date.strftime('%m/%d/%Y')}**.")
                 st.info(f"Clinical action taken: **{therapy_status.upper()}**. Database patient profile updated.")
                 st.balloons()
                 st.query_params.clear()

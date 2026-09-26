@@ -61,7 +61,7 @@ with col1:
     st.markdown(f"**Therapy Status:** `{patient['therapy_status'].upper()}`")
     st.markdown(f"**Infusion Count:** {last_num} completed")
     if last_date:
-        st.markdown(f"**Last Infusion Date:** `{last_date.strftime('%Y-%m-%d')}`")
+        st.markdown(f"**Last Infusion Date:** `{last_date.strftime('%m/%d/%Y')}`")
     else:
         st.markdown("**Last Infusion Date:** `None`")
 
@@ -71,7 +71,7 @@ with col2:
     # Calculate next expected date
     expected_due = eval_status["next_infusion_date"]
     if expected_due:
-        st.markdown(f"**Scheduled Due Date:** `{expected_due.strftime('%Y-%m-%d')}`")
+        st.markdown(f"**Scheduled Due Date:** `{expected_due.strftime('%m/%d/%Y')}`")
     else:
         st.markdown("**Scheduled Due Date:** `Immediate` (first infusion)")
 
@@ -82,10 +82,10 @@ mri_pending = eval_status["mri_pending"]
 
 if mri_required:
     if mri_pending:
-        st.error(f"🚨 **CRITICAL HOLD WARNING**: Infusion #{next_num} requires a surveillance MRI scan. No MRI has been recorded since the last infusion ({last_date or 'N/A'}). Do not administer this infusion until an MRI scan has been completed.")
+        st.error(f"🚨 **CRITICAL HOLD WARNING**: Infusion #{next_num} requires a surveillance MRI scan. No MRI has been recorded since the last infusion ({last_date.strftime('%m/%d/%Y') if last_date else 'N/A'}). Do not administer this infusion until an MRI scan has been completed.")
     else:
         last_mri_date = patient.get("last_mri_date")
-        st.success(f"🟢 **Clear to Proceed**: Surveillance MRI for Infusion #{next_num} was recorded on **{last_mri_date.strftime('%Y-%m-%d')}** (after last infusion date).")
+        st.success(f"🟢 **Clear to Proceed**: Surveillance MRI for Infusion #{next_num} was recorded on **{last_mri_date.strftime('%m/%d/%Y')}** (after last infusion date).")
 else:
     st.info(f"🟢 **Surveillance Check**: No routine surveillance MRI is required prior to Infusion #{next_num}.")
 
@@ -101,7 +101,7 @@ st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
 with st.form("infusion_form"):
     st.markdown("### Log Infusion Details")
     
-    infusion_date = st.date_input("Infusion Administration Date*", value=datetime.date.today())
+    infusion_date = st.date_input("Infusion Administration Date*", value=datetime.date.today(), format="MM/DD/YYYY")
     
     reaction_severity = st.selectbox(
         "Infusion Reaction Severity",
@@ -119,7 +119,7 @@ if submitted:
     if mri_pending:
         st.error("Submission blocked: You cannot record an infusion when a required surveillance MRI is pending.")
     elif last_date and infusion_date <= last_date:
-        st.error(f"Submission blocked: Infusion date ({infusion_date}) must be after the last infusion date ({last_date}).")
+        st.error(f"Submission blocked: Infusion date ({infusion_date.strftime('%m/%d/%Y')}) must be after the last infusion date ({last_date.strftime('%m/%d/%Y')}).")
     else:
         try:
             # Insert the infusion record
@@ -135,7 +135,7 @@ if submitted:
             )
             
             if infusion_pk:
-                st.success(f"🎉 **Success!** Recorded Infusion #{next_num} for patient **{selected_mrn}** on **{infusion_date.strftime('%Y-%m-%d')}**.")
+                st.success(f"🎉 **Success!** Recorded Infusion #{next_num} for patient **{selected_mrn}** on **{infusion_date.strftime('%m/%d/%Y')}**.")
                 st.balloons()
                 # Clear query parameters and reload to reflect changes
                 st.query_params.clear()

@@ -96,11 +96,15 @@ def evaluate_patient_status(patient: dict, current_date: datetime.date = None) -
             if not last_mri_date or last_mri_date <= discon_date:
                 discontinued_mri_pending = True
                 
-    # 6.5. Phone call action flag (UPGRADE 1)
+    # 6.5. Phone call action flag (UPGRADE 1 & follow-up confirmation)
     phone_call_action_required = False
     last_call_outcome = patient.get("last_call_outcome")
     call_follow_up_required = patient.get("call_follow_up_required", False)
-    if last_call_outcome in ("reached - new symptoms", "reached - escalated") or call_follow_up_required:
+    call_follow_up_confirmed = patient.get("call_follow_up_confirmed", False)
+    call_follow_up_date = patient.get("call_follow_up_date")
+    
+    unconfirmed_follow_up = call_follow_up_required and not call_follow_up_confirmed
+    if last_call_outcome in ("reached - new symptoms", "reached - escalated") or unconfirmed_follow_up:
         phone_call_action_required = True
                 
     # 7. Evaluate if the patient needs action this week
@@ -121,7 +125,12 @@ def evaluate_patient_status(patient: dict, current_date: datetime.date = None) -
     if discontinued_mri_pending:
         reasons.append("Post-discontinuation follow-up MRI required")
     if phone_call_action_required:
-        reasons.append("Phone call follow-up or symptom escalation action required")
+        if unconfirmed_follow_up and call_follow_up_date:
+            reasons.append(f"Phone call follow-up required (target: {call_follow_up_date.strftime('%m/%d/%Y')})")
+        elif unconfirmed_follow_up:
+            reasons.append("Phone call follow-up required")
+        else:
+            reasons.append("Phone call symptom escalation action required")
         
     needs_action = len(reasons) > 0
     

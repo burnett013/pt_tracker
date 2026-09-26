@@ -98,7 +98,7 @@ with tab_action:
             body_html = (
                 f'<div style="margin-bottom: 0.5rem;">'
                 f'<strong>Infusion Status:</strong> Infusion #{pat["last_infusion_number"] or 0} completed. '
-                f'{"Next Infusion due: " + pat["next_infusion_date"].strftime("%Y-%m-%d") if pat["next_infusion_date"] else "No infusions recorded."}'
+                f'{"Next Infusion due: " + pat["next_infusion_date"].strftime("%m/%d/%Y") if pat["next_infusion_date"] else "No infusions recorded."}'
                 f'</div>'
                 f'<div>'
                 f'<strong>Action Required Reasons:</strong>'
@@ -152,8 +152,8 @@ with tab_active:
         display_df['Drug'] = roster_df['drug'].str.title()
         display_df['Therapy Status'] = roster_df['therapy_status'].str.upper()
         display_df['Last Infusion #'] = roster_df['last_infusion_number'].fillna(0).astype(int)
-        display_df['Last Infusion Date'] = roster_df['last_infusion_date'].apply(lambda d: d.strftime('%Y-%m-%d') if d else 'None')
-        display_df['Next Infusion Date'] = roster_df['next_infusion_date'].apply(lambda d: d.strftime('%Y-%m-%d') if d else 'None')
+        display_df['Last Infusion Date'] = roster_df['last_infusion_date'].apply(lambda d: d.strftime('%m/%d/%Y') if d else 'None')
+        display_df['Next Infusion Date'] = roster_df['next_infusion_date'].apply(lambda d: d.strftime('%m/%d/%Y') if d else 'None')
         display_df['MRI Pending?'] = roster_df['mri_pending'].apply(lambda b: '⚠️ YES' if b else 'No')
         display_df['Active ARIA?'] = roster_df['has_active_aria'].apply(lambda b: '🔴 YES' if b else 'No')
         display_df['Prior Reaction?'] = roster_df['has_prior_reaction'].apply(lambda b: '⚠️ YES' if b else 'No')
@@ -192,7 +192,7 @@ with tab_mri:
             mri_display['MRN'] = mri_pending_df['mrn']
             mri_display['Drug'] = mri_pending_df['drug'].str.title()
             mri_display['Next Infusion #'] = mri_pending_df['next_infusion_number']
-            mri_display['Next Infusion Date'] = mri_pending_df['next_infusion_date'].apply(lambda d: d.strftime('%Y-%m-%d') if d else 'None')
+            mri_display['Next Infusion Date'] = mri_pending_df['next_infusion_date'].apply(lambda d: d.strftime('%m/%d/%Y') if d else 'None')
             st.dataframe(mri_display, use_container_width=True, hide_index=True)
 
 # -----------------
@@ -215,7 +215,7 @@ with tab_inactive:
             hold_display['MRN'] = hold_roster['mrn']
             hold_display['Drug'] = hold_roster['drug'].str.title()
             hold_display['Last Infusion #'] = hold_roster['last_infusion_number'].fillna(0).astype(int)
-            hold_display['Last Infusion Date'] = hold_roster['last_infusion_date'].apply(lambda d: d.strftime('%Y-%m-%d') if d else 'None')
+            hold_display['Last Infusion Date'] = hold_roster['last_infusion_date'].apply(lambda d: d.strftime('%m/%d/%Y') if d else 'None')
             st.dataframe(hold_display, use_container_width=True, hide_index=True)
             
     with col_discon:
@@ -226,7 +226,7 @@ with tab_inactive:
             discon_display = pd.DataFrame()
             discon_display['MRN'] = discon_roster['mrn']
             discon_display['Drug'] = discon_roster['drug'].str.title()
-            discon_display['Discontinued Date'] = discon_roster['discontinuation_date'].apply(lambda d: d.strftime('%Y-%m-%d') if d else 'None')
+            discon_display['Discontinued Date'] = discon_roster['discontinuation_date'].apply(lambda d: d.strftime('%m/%d/%Y') if d else 'None')
             discon_display['Reason'] = discon_roster['discontinuation_reason'].str.upper()
             discon_display['Follow-up MRI?'] = discon_roster['discontinued_mri_pending'].apply(lambda b: '⚠️ PENDING' if b else 'Completed/No')
             st.dataframe(discon_display, use_container_width=True, hide_index=True)

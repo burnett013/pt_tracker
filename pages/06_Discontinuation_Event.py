@@ -50,7 +50,7 @@ with col1:
 with col2:
     st.markdown(f"**Last Infusion Administered:** Infusion #{patient['last_infusion_number'] or 0}")
     if patient['last_infusion_date']:
-        st.markdown(f"**Last Infusion Date:** `{patient['last_infusion_date'].strftime('%Y-%m-%d')}`")
+        st.markdown(f"**Last Infusion Date:** `{patient['last_infusion_date'].strftime('%m/%d/%Y')}`")
 
 st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
 
@@ -59,7 +59,7 @@ with st.form("discontinuation_form"):
     
     col_date, col_reason = st.columns(2)
     with col_date:
-        discon_date = st.date_input("Discontinuation Date*", value=datetime.date.today())
+        discon_date = st.date_input("Discontinuation Date*", value=datetime.date.today(), format="MM/DD/YYYY")
         
         mri_required = st.checkbox(
             "Is a Post-Discontinuation Follow-up Safety MRI Required?",
@@ -103,7 +103,7 @@ if submitted:
     if reason == "other" and not other_details.strip():
         st.error("Error: Please provide specific details explaining the 'Other Reason'.")
     elif discon_date < patient['enrolled_at'].date():
-        st.error(f"Error: Discontinuation date cannot be earlier than enrollment date ({patient['enrolled_at'].strftime('%Y-%m-%d')}).")
+        st.error(f"Error: Discontinuation date cannot be earlier than enrollment date ({patient['enrolled_at'].strftime('%m/%d/%Y')}).")
     else:
         try:
             discon_pk = record_discontinuation(
@@ -117,7 +117,7 @@ if submitted:
             )
             
             if discon_pk:
-                st.success(f"🎉 **Success!** Recorded permanent discontinuation for patient **{selected_mrn}** on **{discon_date.strftime('%Y-%m-%d')}**.")
+                st.success(f"🎉 **Success!** Recorded permanent discontinuation for patient **{selected_mrn}** on **{discon_date.strftime('%m/%d/%Y')}**.")
                 st.info("The patient status has been set to **DISCONTINUED** and marked inactive in the registry.")
                 st.balloons()
                 st.query_params.clear()

@@ -116,7 +116,7 @@ def get_patient_overview(mrn=None):
     latest_phone_call AS (
         SELECT DISTINCT ON (patient_pk) *
         FROM phone_calls
-        ORDER BY patient_pk, call_date DESC, created_at DESC
+        ORDER BY patient_pk, call_number DESC, call_date DESC, created_at DESC
     )
     SELECT 
         p.patient_pk,
@@ -144,9 +144,12 @@ def get_patient_overview(mrn=None):
         d.discontinuation_date,
         d.reason as discontinuation_reason,
         COALESCE(d.follow_up_mri_required, FALSE) as follow_up_mri_required,
+        c.call_number as last_call_number,
         c.call_date as last_call_date,
         c.call_outcome as last_call_outcome,
-        COALESCE(c.follow_up_required, FALSE) as call_follow_up_required
+        COALESCE(c.follow_up_required, FALSE) as call_follow_up_required,
+        c.follow_up_date as call_follow_up_date,
+        COALESCE(c.follow_up_confirmed, FALSE) as call_follow_up_confirmed
     FROM patients p
     LEFT JOIN latest_infusion i ON p.patient_pk = i.patient_pk
     LEFT JOIN reaction_summary r ON p.patient_pk = r.patient_pk
@@ -283,26 +286,81 @@ def record_discontinuation(patient_pk, discontinuation_date, reason, other_reaso
     res = execute_transaction(queries, user_email)
     return res[0][0] if res else None
 
-def record_phone_call(patient_pk, call_date, call_reason, call_outcome, follow_up_required, notes, user_email):
-    """Records a follow-up phone call for a patient."""
-    query = """
+def record_phone_call(patient_pk, call_date, call_reason, call_outcome, follow_up_required, follow_up_date=None, follow_up_confirmed=False, parent_call_pk=None, notes=None, user_email="demo@clinic.local"):
+    """
+    Records a follow-up phone call for a patient, auto-incrementing call_number per patient.
+    If parent_call_pk is supplied, links to that call and automatically marks the parent call's
+    follow_up_confirmed as True in the same transaction.
+    """
+    insert_query = """
     INSERT INTO phone_calls (
-        patient_pk, call_date, call_reason, call_outcome, follow_up_required, notes, created_by
-    ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+        patient_pk, call_number, call_date, call_reason, call_outcome, 
+        follow_up_required, follow_up_date, follow_up_confirmed, 
+        parent_call_pk, notes, created_by
+    ) VALUES (
+        %s,
+        (SELECT COALESCE(MAX(call_number), 0) + 1 FROM phone_calls WHERE patient_pk = %s),
+        %s, %s, %s, %s, %s, %s, %s, %s, %s
+    )
+    RETURNING phone_call_pk, call_number;
+    """
+    insert_params = (
+        patient_pk, patient_pk, call_date, call_reason, call_outcome,
+        follow_up_required, follow_up_date, follow_up_confirmed,
+        parent_call_pk, notes, user_email
+    )
+    
+    queries = [(insert_query, insert_params)]
+    
+    if parent_call_pk:
+        # Automatically mark parent call as confirmed
+        update_parent_query = """
+        UPDATE phone_calls
+        SET follow_up_confirmed = TRUE
+        WHERE phone_call_pk = %s;
+        """
+        queries.append((update_parent_query, (parent_call_pk,)))
+        
+    res = execute_transaction(queries, user_email)
+    return res[0][0] if res else None
+
+def confirm_phone_call_follow_up(phone_call_pk, follow_up_confirmed=True, user_email="demo@clinic.local"):
+    """Updates the follow-up confirmation status for an existing phone call."""
+    query = """
+    UPDATE phone_calls
+    SET follow_up_confirmed = %s
+    WHERE phone_call_pk = %s
     RETURNING phone_call_pk;
     """
-    params = (patient_pk, call_date, call_reason, call_outcome, follow_up_required, notes, user_email)
+    params = (follow_up_confirmed, phone_call_pk)
     res = execute_transaction([(query, params)], user_email)
     return res[0][0] if res else None
 
 def get_phone_calls_by_patient(patient_pk):
-    """Retrieves all phone call records for a patient, newest first."""
+    """Retrieves all phone call records for a patient, newest first, including linked parent call info."""
     conn = get_connection()
     try:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute("""
-                SELECT phone_call_pk, call_date, call_reason, call_outcome, follow_up_required, notes, created_at, created_by
-                FROM phone_calls WHERE patient_pk = %s ORDER BY call_date DESC, created_at DESC;
+                SELECT 
+                    c.phone_call_pk,
+                    c.call_number,
+                    c.call_date,
+                    c.call_reason,
+                    c.call_outcome,
+                    c.follow_up_required,
+                    c.follow_up_date,
+                    c.follow_up_confirmed,
+                    c.parent_call_pk,
+                    p.call_number as parent_call_number,
+                    p.call_date as parent_call_date,
+                    c.notes,
+                    c.created_at,
+                    c.created_by
+                FROM phone_calls c
+                LEFT JOIN phone_calls p ON c.parent_call_pk = p.phone_call_pk
+                WHERE c.patient_pk = %s
+                ORDER BY c.call_number DESC, c.call_date DESC;
             """, (patient_pk,))
             return cur.fetchall()
     finally:
@@ -348,8 +406,25 @@ def get_patient_history(patient_pk):
             
             # 5. Get phone calls
             cur.execute("""
-                SELECT phone_call_pk, call_date, call_reason, call_outcome, follow_up_required, notes, created_at, created_by
-                FROM phone_calls WHERE patient_pk = %s ORDER BY call_date DESC, created_at DESC;
+                SELECT 
+                    c.phone_call_pk,
+                    c.call_number,
+                    c.call_date,
+                    c.call_reason,
+                    c.call_outcome,
+                    c.follow_up_required,
+                    c.follow_up_date,
+                    c.follow_up_confirmed,
+                    c.parent_call_pk,
+                    p.call_number as parent_call_number,
+                    p.call_date as parent_call_date,
+                    c.notes,
+                    c.created_at,
+                    c.created_by
+                FROM phone_calls c
+                LEFT JOIN phone_calls p ON c.parent_call_pk = p.phone_call_pk
+                WHERE c.patient_pk = %s
+                ORDER BY c.call_number DESC, c.call_date DESC;
             """, (patient_pk,))
             calls = cur.fetchall()
             
