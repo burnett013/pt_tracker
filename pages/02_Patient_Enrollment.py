@@ -4,12 +4,13 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import streamlit as st
 
-from services.ui_components import apply_custom_css
+from services.ui_components import apply_custom_css, render_sidebar_assistant
 from services.validation import clean_mrn, is_valid_mrn
 from db.queries import enroll_patient, get_patient_overview
 
 st.set_page_config(page_title="Patient Enrollment | Anti-Amyloid Tracker", page_icon="➕", layout="wide")
 apply_custom_css()
+render_sidebar_assistant()
 
 user = {"email": "demo@clinic.local", "username": "demo_user", "name": "Demo User"}
 

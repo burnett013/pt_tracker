@@ -166,17 +166,18 @@ To document patient phone calls, link follow-ups, and track required actions:
 
 ---
 
-## 🤖 9. Clinical AI Assistant & Workflow Guide
+## 🤖 9. Persistent Sidebar "Ask Assistant" Drawer
 
-To assist clinical coordinators, nurses, and neurologists in navigating the application and verifying complex protocol guidelines:
+To assist clinical coordinators, nurses, and neurologists without losing their place on any page:
 
-1. Select **Clinical Assistant** in the sidebar (`pages/09_Clinical_Assistant.py`).
-2. Type any operational or clinical scheduling query in natural language (or tap one of the Quick Topic buttons):
+1. Look at the bottom of the **left sidebar** on **any page** in the application.
+2. Click to expand the **🤖 Ask Assistant** drawer.
+3. Type any operational or clinical scheduling query in natural language:
    * *"When are surveillance MRIs required for Lecanemab?"*
    * *"What happens when an ARIA-E event is detected?"*
    * *"How do I tie a follow-up phone call to a previous call?"*
    * *"Why is the app blocking me from logging Infusion #3?"*
-3. **Safety & HIPAA Guardrail**:
+4. **Safety & HIPAA Guardrail**:
    * The Assistant is grounded strictly in clinical protocols and system rules.
    * To ensure compliance with HIPAA, never enter patient names, dates of birth, or MRNs into the chat.
 

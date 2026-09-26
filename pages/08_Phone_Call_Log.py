@@ -6,11 +6,12 @@ import streamlit as st
 import datetime
 import pandas as pd
 
-from services.ui_components import apply_custom_css
+from services.ui_components import apply_custom_css, render_sidebar_assistant
 from db.queries import get_patient_overview, record_phone_call, get_phone_calls_by_patient, confirm_phone_call_follow_up
 
 st.set_page_config(page_title="Phone Call Log | Anti-Amyloid Tracker", page_icon="📞", layout="wide")
 apply_custom_css()
+render_sidebar_assistant()
 
 user = {"email": "demo@clinic.local", "username": "demo_user", "name": "Demo User"}
 

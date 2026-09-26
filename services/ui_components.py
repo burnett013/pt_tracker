@@ -144,3 +144,75 @@ def format_date(d, default: str = "-") -> str:
     except Exception:
         return str(d)
 
+def render_sidebar_assistant():
+    """Renders a persistent 'Ask Assistant' drawer in the sidebar accessible from any page."""
+    from services.chatbot_service import get_gemini_client, load_system_knowledge
+
+    with st.sidebar:
+        st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
+        with st.expander("🤖 **Ask Assistant**", expanded=False):
+            client = get_gemini_client()
+
+            if not client:
+                st.caption("🔑 Enter Gemini API key below:")
+                key_input = st.text_input("Gemini API Key", type="password", key="sidebar_gemini_key", label_visibility="collapsed", placeholder="Enter key...")
+                if key_input:
+                    client = get_gemini_client(api_key=key_input)
+                    if client:
+                        st.session_state["custom_gemini_key"] = key_input
+                        st.rerun()
+                st.caption("💡 Or set `GEMINI_API_KEY` in environment variables or `.streamlit/secrets.toml`.")
+                return
+
+            if "sidebar_chat_messages" not in st.session_state:
+                st.session_state["sidebar_chat_messages"] = [
+                    {
+                        "role": "assistant",
+                        "content": "👋 Hi! Need guidance on surveillance schedules, ARIA rules, or tracker workflows?"
+                    }
+                ]
+
+            col_c1, col_c2 = st.columns([3, 1])
+            with col_c2:
+                if st.button("🧹 Clear", key="clear_sidebar_chat", help="Clear conversation"):
+                    st.session_state["sidebar_chat_messages"] = [
+                        {
+                            "role": "assistant",
+                            "content": "👋 Hi! Need guidance on surveillance schedules, ARIA rules, or tracker workflows?"
+                        }
+                    ]
+                    st.rerun()
+
+            # Display chat message history inside drawer
+            chat_container = st.container(height=300)
+            with chat_container:
+                for msg in st.session_state["sidebar_chat_messages"]:
+                    avatar = "🧬" if msg["role"] == "assistant" else "👤"
+                    with st.chat_message(msg["role"], avatar=avatar):
+                        st.markdown(msg["content"])
+
+            # Input inside drawer
+            query = st.chat_input("Ask about workflows or schedules...", key="sidebar_assistant_input")
+            if query:
+                st.session_state["sidebar_chat_messages"].append({"role": "user", "content": query})
+
+                # Call Gemini
+                system_instruction = load_system_knowledge()
+                history_text = "\n\n".join([f"{'User' if m['role']=='user' else 'Assistant'}: {m['content']}" for m in st.session_state["sidebar_chat_messages"]])
+
+                try:
+                    response = client.models.generate_content(
+                        model="gemini-3.5-flash-lite",
+                        contents=history_text,
+                        config={
+                            "system_instruction": system_instruction,
+                            "temperature": 0.2
+                        }
+                    )
+                    reply = response.text
+                except Exception as e:
+                    reply = f"Error: {e}"
+
+                st.session_state["sidebar_chat_messages"].append({"role": "assistant", "content": reply})
+                st.rerun()
+

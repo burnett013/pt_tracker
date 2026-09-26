@@ -3,7 +3,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import streamlit as st
-from services.ui_components import apply_custom_css
+from services.ui_components import apply_custom_css, render_sidebar_assistant
 
 # Page Configuration
 st.set_page_config(
@@ -13,8 +13,9 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Apply styling
+# Apply styling and persistent assistant drawer
 apply_custom_css()
+render_sidebar_assistant()
 
 # Welcome Header
 st.title("🧬 Anti-Amyloid Patient Tracking System")

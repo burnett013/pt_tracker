@@ -5,11 +5,12 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import streamlit as st
 import pandas as pd
 
-from services.ui_components import apply_custom_css, render_badge
+from services.ui_components import apply_custom_css, render_badge, render_sidebar_assistant
 from db.queries import get_patient_overview, get_patient_history
 
 st.set_page_config(page_title="Patient Lookup | Anti-Amyloid Tracker", page_icon="🔍", layout="wide")
 apply_custom_css()
+render_sidebar_assistant()
 
 user = {"email": "demo@clinic.local", "username": "demo_user", "name": "Demo User"}
 
