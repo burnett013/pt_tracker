@@ -166,18 +166,18 @@ To document patient phone calls, link follow-ups, and track required actions:
 
 ---
 
-## 🤖 9. Clinical Copilot & AI Workflow Assistant
+## 🤖 9. Clinical AI Assistant & Workflow Guide
 
 To assist clinical coordinators, nurses, and neurologists in navigating the application and verifying complex protocol guidelines:
 
-1. Select **Clinical Copilot** in the sidebar (`pages/09_Clinical_Copilot.py`).
+1. Select **Clinical Assistant** in the sidebar (`pages/09_Clinical_Assistant.py`).
 2. Type any operational or clinical scheduling query in natural language (or tap one of the Quick Topic buttons):
    * *"When are surveillance MRIs required for Lecanemab?"*
    * *"What happens when an ARIA-E event is detected?"*
    * *"How do I tie a follow-up phone call to a previous call?"*
    * *"Why is the app blocking me from logging Infusion #3?"*
 3. **Safety & HIPAA Guardrail**:
-   * The Copilot is grounded strictly in clinical protocols and system rules.
+   * The Assistant is grounded strictly in clinical protocols and system rules.
    * To ensure compliance with HIPAA, never enter patient names, dates of birth, or MRNs into the chat.
 
 ---
@@ -197,7 +197,7 @@ To assist clinical coordinators, nurses, and neurologists in navigating the appl
 ### Environment Variables
 Set these in the Posit Connect Cloud dashboard under the app's settings → Environment Variables:
 - Neon Database: `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD`
-- Gemini AI Copilot: `GEMINI_API_KEY` (Gemini API Key for the conversational assistant)
+- Gemini AI Assistant: `GEMINI_API_KEY` (Gemini API Key for the conversational assistant)
 
 ### Re-enabling Authentication
 To restore authentication for production use:

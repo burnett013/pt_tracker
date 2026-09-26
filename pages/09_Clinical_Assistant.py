@@ -7,20 +7,20 @@ from services.ui_components import apply_custom_css
 from services.chatbot_service import load_system_knowledge, get_gemini_client
 
 st.set_page_config(
-    page_title="Clinical Copilot | Anti-Amyloid Tracker",
+    page_title="Clinical Assistant | Anti-Amyloid Tracker",
     page_icon="🤖",
     layout="wide"
 )
 apply_custom_css()
 
-st.title("🤖 Clinical Copilot & App Assistant")
+st.title("🤖 Clinical AI Assistant")
 st.caption("Ask questions about anti-amyloid therapy schedules, ARIA safety guidelines, and how to navigate workflows.")
 
 # Resolve API Key
 client = get_gemini_client()
 
 if not client:
-    st.info("🔑 **Gemini API Key Required**  \nEnter your Gemini API key below to activate the Copilot. (You can also store it permanently in `.streamlit/secrets.toml` as `GEMINI_API_KEY` or `[gemini] api_key = ...`).")
+    st.info("🔑 **Gemini API Key Required**  \nEnter your Gemini API key below to activate the Clinical Assistant. (You can also store it permanently in `.streamlit/secrets.toml` as `GEMINI_API_KEY` or `[gemini] api_key = ...`).")
     user_key = st.text_input("Gemini API Key*", type="password", placeholder="AIzaSy...")
     if user_key:
         client = get_gemini_client(api_key=user_key)
@@ -39,7 +39,7 @@ if "messages" not in st.session_state:
     st.session_state["messages"] = [
         {
             "role": "assistant",
-            "content": "👋 Hello! I am your **Clinical Workflow Copilot**. I can guide you through drug surveillance schedules (*Lecanemab* & *Donanemab*), explain required MRI checkpoints, clarify ARIA severity ratings, or help you link follow-up phone calls. How can I help you today?"
+            "content": "👋 Hello! I am your **Clinical Workflow Assistant**. I can guide you through drug surveillance schedules (*Lecanemab* & *Donanemab*), explain required MRI checkpoints, clarify ARIA severity ratings, or help you link follow-up phone calls. How can I help you today?"
         }
     ]
 
