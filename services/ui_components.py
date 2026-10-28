@@ -146,20 +146,20 @@ def format_date(d, default: str = "-") -> str:
 
 def render_sidebar_assistant():
     """Renders a persistent 'Ask Assistant' drawer in the sidebar accessible from any page."""
-    from services.chatbot_service import get_gemini_client, load_system_knowledge
+    from services.chatbot_service import get_gemini_api_key, generate_assistant_reply, load_system_knowledge
 
     with st.sidebar:
         st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
         with st.expander("🤖 **Ask Assistant**", expanded=False):
-            client = get_gemini_client()
+            api_key = get_gemini_api_key()
 
-            if not client:
+            if not api_key:
                 st.caption("🔑 Enter Gemini API key below:")
                 key_input = st.text_input("Gemini API Key", type="password", key="sidebar_gemini_key", label_visibility="collapsed", placeholder="Enter key...")
                 if key_input:
-                    client = get_gemini_client(api_key=key_input)
-                    if client:
-                        st.session_state["custom_gemini_key"] = key_input
+                    cleaned_key = get_gemini_api_key(api_key=key_input)
+                    if cleaned_key:
+                        st.session_state["custom_gemini_key"] = cleaned_key
                         st.rerun()
                 st.caption("💡 Or set `GEMINI_API_KEY` in environment variables or `.streamlit/secrets.toml`.")
                 return
@@ -196,20 +196,16 @@ def render_sidebar_assistant():
             if query:
                 st.session_state["sidebar_chat_messages"].append({"role": "user", "content": query})
 
-                # Call Gemini
+                # Call Gemini REST endpoint
                 system_instruction = load_system_knowledge()
                 history_text = "\n\n".join([f"{'User' if m['role']=='user' else 'Assistant'}: {m['content']}" for m in st.session_state["sidebar_chat_messages"]])
 
                 try:
-                    response = client.models.generate_content(
-                        model="gemini-3.5-flash-lite",
-                        contents=history_text,
-                        config={
-                            "system_instruction": system_instruction,
-                            "temperature": 0.2
-                        }
+                    reply = generate_assistant_reply(
+                        history_text=history_text,
+                        system_instruction=system_instruction,
+                        api_key=api_key
                     )
-                    reply = response.text
                 except Exception as e:
                     reply = f"Error: {e}"
 

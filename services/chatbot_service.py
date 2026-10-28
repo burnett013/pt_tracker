@@ -1,11 +1,13 @@
 import os
+import json
+import urllib.request
+import urllib.error
 import streamlit as st
-from google import genai
-from google.genai import types
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 BASE_DIR = os.path.dirname(SCRIPT_DIR)
 WORKFLOW_PATH = os.path.join(BASE_DIR, "workflow.md")
+SECRETS_PATH = os.path.join(BASE_DIR, ".streamlit", "secrets.toml")
 
 @st.cache_data
 def load_system_knowledge() -> str:
@@ -52,9 +54,15 @@ Your primary mission is to assist staff with navigating the 8 application workfl
 """
     return system_instruction
 
-def get_gemini_client(api_key: str | None = None) -> genai.Client | None:
-    """Instantiates the Gemini client using provided key, secrets.toml, or environment variable."""
+def get_gemini_api_key(api_key: str | None = None) -> str | None:
+    """Resolves the Gemini API key from argument, session_state, secrets.toml, or environment variables."""
     key = api_key
+    if not key:
+        try:
+            key = st.session_state.get("custom_gemini_key")
+        except Exception:
+            pass
+
     if not key:
         try:
             if hasattr(st, "secrets"):
@@ -67,13 +75,81 @@ def get_gemini_client(api_key: str | None = None) -> genai.Client | None:
         except Exception:
             pass
 
+    if not key and os.path.exists(SECRETS_PATH):
+        try:
+            import tomllib
+            with open(SECRETS_PATH, "rb") as f:
+                cfg = tomllib.load(f)
+                key = (
+                    cfg.get("GEMINI_API_KEY")
+                    or cfg.get("gemini", {}).get("api_key")
+                    or cfg.get("postgres", {}).get("GEMINI_API_KEY")
+                )
+        except Exception:
+            pass
+
     if not key:
         key = os.environ.get("GEMINI_API_KEY")
 
     if not key:
         return None
 
+    cleaned = str(key).strip().strip('"').strip("'")
+    return cleaned if cleaned else None
+
+def generate_assistant_reply(
+    history_text: str,
+    system_instruction: str,
+    api_key: str | None = None,
+    model: str = "gemini-3.5-flash-lite"
+) -> str:
+    """Calls the Gemini REST API directly using stdlib urllib to avoid SDK/namespace issues."""
+    key = get_gemini_api_key(api_key)
+    if not key:
+        raise ValueError("Missing Gemini API key.")
+
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}"
+    payload = {
+        "system_instruction": {
+            "parts": [{"text": system_instruction}]
+        },
+        "contents": [
+            {
+                "role": "user",
+                "parts": [{"text": history_text}]
+            }
+        ],
+        "generationConfig": {
+            "temperature": 0.2
+        }
+    }
+
+    req = urllib.request.Request(
+        url,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST"
+    )
+
     try:
-        return genai.Client(api_key=key)
-    except Exception:
-        return None
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        err_body = e.read().decode("utf-8", errors="replace")
+        try:
+            err_json = json.loads(err_body)
+            err_msg = err_json.get("error", {}).get("message", err_body)
+        except Exception:
+            err_msg = err_body
+        raise RuntimeError(f"Gemini API HTTP {e.code}: {err_msg}") from e
+    except Exception as e:
+        raise RuntimeError(f"Failed to reach Gemini API: {e}") from e
+
+    candidates = data.get("candidates", [])
+    if not candidates:
+        return "No response generated. Please rephrase your question."
+
+    parts = candidates[0].get("content", {}).get("parts", [])
+    texts = [p.get("text", "") for p in parts if "text" in p]
+    return "\n".join(texts).strip() or "No text returned from assistant."
+
