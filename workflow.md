@@ -1,6 +1,6 @@
-# Clinical Guide: How to Use the Patient Tracker
+# Clinical Guide: How to Use the Anti-Amyloid Patient Tracker
 
-This guide outlines how doctors, nurses, and administrative staff use the **Anti-Amyloid Patient Tracking App** to monitor patients undergoing therapy (*lecanemab* or *donanemab*).
+This guide outlines how doctors, nurses, and clinical coordinators use the **Anti-Amyloid Patient Tracking App** to monitor patients undergoing therapy (*lecanemab* or *donanemab*).
 
 ---
 
@@ -10,27 +10,17 @@ The application is hosted on **Posit Connect Cloud** and can be accessed at:
 
 > **https://connect.posit.cloud/burnett013/content/019ec20d-5d57-ece3-12bf-d3fe94c74**
 
-No login or account is required for the current demo version. Simply open the link in any modern web browser.
-
-### Sharing with Others
-- Set the app's access to **"Anyone with the link"** in the Posit Connect Cloud settings (⚙️ gear icon → Access/Sharing).
-- Send the URL above directly to any collaborator or reviewer.
-
 ---
 
-## 🏗️ Architecture Overview
+## 🏗️ Streamlined 3-Page Patient-Centric Architecture
 
-| Component | Technology | Details |
-|-----------|-----------|---------|
-| **Frontend** | Streamlit (Python) | Multi-page app with 7 workflow pages |
-| **Database** | Neon Serverless PostgreSQL | Cloud-hosted, auto-scaling, SSL connections |
-| **Hosting** | Posit Connect Cloud (Free tier) | Git-backed deployment from GitHub |
-| **Source Code** | GitHub | https://github.com/burnett013/pt_tracker.git |
+The app is organized around **3 primary sidebar pages** so staff never have to repeatedly select the same patient across separate pages:
 
-### Key Configuration
-- **Database credentials** are stored as environment variables (`PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD`) in the Posit Connect Cloud dashboard — never committed to Git.
-- **Authentication** has been removed for demo purposes. All audit trail entries log as `demo@clinic.local`. Authentication can be re-enabled by restoring the `services/auth.py` integration when deploying to a production environment with Entra ID or similar identity provider.
-- The `sys.path` injection at the top of `app.py` and each page under `pages/` is required for Posit Connect Cloud's sandboxed Python environment to resolve the `services` and `db` packages.
+| Sidebar Page | Purpose |
+|--------------|---------|
+| **📊 01 Dashboard** | Daily clinical worklist, action cards, active roster, ARIA/MRI watchlists, and holds/discontinuations. Clicking any action button opens that patient's profile directly to the relevant section. |
+| **➕ 02 Patient Enrollment** | Enroll a new patient by MRN, record APOE & baseline MRI status, and optionally auto-generate their upcoming Infusion & Surveillance MRI schedule from a 1st infusion date. |
+| **👤 03 Patient Profile** | Unified clinical workspace for a selected patient with a persistent summary header and 5 interactive sections: **📅 Schedule & Infusions**, **🧠 MRI & ARIA Surveillance**, **📞 Phone Call Log**, **⚙️ Profile, Hold & Discontinuation**, and **📋 Audit & Change Log**. |
 
 ---
 
@@ -40,168 +30,61 @@ To comply with HIPAA and privacy safeguards:
 1. **Never enter a patient's name, date of birth, phone number, or gender.**
 2. The **Medical Record Number (MRN)** is the **only** patient identifier stored in this system.
 3. **MRN Format**: Must be an uppercase **M** followed by **00** and **7 digits** (e.g., `M001234567`).
-4. **Activity Logs**: All changes you make (adding patients, recording infusions, logging scans) are automatically logged with a user identifier and timestamp for clinical safety auditing.
+4. **Activity Logs**: All creations, edits, and deletions are automatically logged in **US Central Time (`America/Chicago`)** for clinical safety auditing.
 
 ---
 
-## 📊 1. The Dashboard (Your Daily Worklist)
-When you open the app, navigate to the **Dashboard** page in the sidebar. This is your central hub:
-
-* **🚨 Action Items This Week**: This is your priority list. A patient appears here if they require immediate attention, including:
-  * An infusion is due or overdue this week.
-  * A safety MRI scan is required before their next infusion and has not been logged yet.
-  * The patient has active ARIA.
-  * A monthly ARIA follow-up MRI is due.
-  * The patient's therapy is currently on **HOLD**.
-  * The patient requires premedication due to a past infusion reaction.
-* **📋 Active Patient Roster**: A searchable list of all patients currently undergoing therapy, showing their last infusion count, next due date, and safety flags.
-* **🧠 ARIA & MRI Watchlist**: Summarizes patients under active ARIA monitoring and those awaiting routine safety scans.
-* **⏸️ Holds & Discontinued**: Roster of patients whose therapy is suspended or permanently stopped.
+## 📊 1. Dashboard (Your Daily Worklist)
+- **🚨 Action Items This Week**: Priority cards for any patient with an infusion due within 7 days, a required surveillance MRI pending before their next infusion, active ARIA monitoring, a monthly ARIA MRI due, therapy on **HOLD**, premedication required due to a past reaction, or an unconfirmed phone call follow-up.
+- **Direct Deep Links**: Clicking **📅 Schedule & Infusions**, **🧠 MRI & ARIA**, **📞 Phone Call Log**, **⚙️ Status & Profile**, or **📋 Audit Log** on any patient card opens **03 Patient Profile** pre-selected to that patient and section.
+- **▶️ Resume Therapy**: For patients on `HOLD`, a **Resume Therapy** button sits directly beneath their card to restore their status to `CONTINUE`.
 
 ---
 
-## ➕ 2. How to Enroll a New Patient
-Before a patient can receive their first infusion, they must be registered in the tracker:
-
+## ➕ 2. Patient Enrollment & Initial Schedule Generation
 1. Select **Patient Enrollment** in the sidebar.
-2. Enter the patient's **MRN** (must match format: `M001234567`).
-3. Select their prescribed **Drug Therapy** (*Lecanemab* or *Donanemab*).
-4. Select their **APOE Genetic Status** (this guides clinical risk planning).
-5. Check the **Baseline MRI Completed** box (required to initialize therapy).
-6. Select the **Infusion Location** (Talis, Vivo, or UT North).
-7. If available, enter the **CMS Registry Number**.
-8. Click **Enroll Patient**.
+2. Enter the **MRN** (`M001234567`), **Drug Therapy** (*Lecanemab* or *Donanemab*), **APOE Genetic Status**, **Baseline MRI Completed**, **Infusion Location** (`Talis`, `Vivo`, `UT North`), and optional **CMS Registry Number**.
+3. **Optional Initial Schedule Setup**: Keep **"Auto-generate initial Infusion & Surveillance MRI schedule"** checked and pick the **Planned 1st Infusion Date** to automatically build the patient's entire upcoming schedule of infusions and mandatory MRI checkpoints.
+4. Click **Enroll Patient**, then click **👤 Open in Patient Profile & Workspace**.
 
 ---
 
-## 💉 3. How to Log an Infusion
-Every time a patient completes an infusion, it must be recorded to keep their schedule up-to-date:
+## 👤 3. Patient Profile & Clinical Workspace
 
-1. Select **Infusion Update** in the sidebar.
-2. Select the patient's **MRN** from the dropdown list.
-3. Review the **Safety Check** panel:
-   * **🔴 CRITICAL HOLD WARNING**: If a surveillance MRI is due before this infusion, the app will show a red block and **block you from submitting**. Do not administer the infusion.
-   * **⚠️ Premedication Alert**: If the patient had an infusion reaction in the past, a warning will remind you to ensure premedication is given.
-4. If clear to proceed, select the **Infusion Administration Date**.
-5. Check **Infusion Reaction Occurred** if they experienced any adverse reaction.
-6. Enter vitals or reaction details in the **Notes** box.
-7. Click **Submit Infusion Record**.
+Once you select a patient at the top of **03 Patient Profile**, their **Persistent Summary Header** stays visible at the top (showing MRN, Drug, APOE, Location, Therapy Status badge, Active ARIA badge, Completed/Next Infusion dates, Surveillance MRI status, and quick **Hold / Resume / Resolve ARIA** buttons).
 
----
+Switch between the 5 workspace sections below the header:
 
-## 🧠 4. How to Record an MRI Scan
-Safety guidelines require periodic brain MRIs to monitor for ARIA. To log a scan:
+### 📅 Section A: Schedule & Infusions ("Sticky Note" Schedule + Check-Off)
+- **Complete Patient Schedule**: Displays the full chronological list of **Scheduled & Completed Infusions** alongside **Mandatory Surveillance MRI Checkpoints** (*Lecanemab*: before Infusions #3, #5, #7, #14; *Donanemab*: before Infusions #2, #3, #5, #7).
+- **Schedule Generator**: Expand **🗓️ Generate or Add Scheduled Infusions** to auto-populate upcoming infusion and MRI dates from any start date.
+- **Check Off / Log Infusion**: Select the infusion number, choose **Completed (Administered)** or **Scheduled (Planned Date)**, confirm the date, and record any **Infusion Reaction Severity** (`None`, `Mild`, `Moderate`, `Severe`, `Anaphylaxis`).
+  - *Hard Safety Stop*: Blocks logging a completed infusion if a required surveillance MRI before that infusion is still pending.
+- **Edit or Delete Existing Infusions (Full CRUD)**: Expand **✏️ Edit or Delete an Existing Infusion / Scheduled Date** to adjust any planned date, completed date, status, reaction severity, or notes—or delete an entry. Changes sync immediately with the Dashboard and Header.
 
-1. Select **MRI Update** in the sidebar.
-2. Select the patient's **MRN**.
-3. Choose the **MRI Type**:
-   * **Scheduled Surveillance**: Routine safety scans (e.g. before Infusion #3 for Lecanemab).
-   * **ARIA Follow-up**: Scans performed to track resolving ARIA.
-4. Enter the **MRI Scan Date**.
-5. Check **ARIA-E Present** or **ARIA-H Present** if these findings are noted on the radiologist's report.
-6. Check **Other Findings Present** to type specific details (like stroke risk signs).
-7. **Safety Clearance (Critical)**:
-   * **Clear to proceed?**: If the radiologist says it is safe to continue infusions, keep this checked.
-   * **HOLD Therapy**: If new ARIA is found and infusions must stop, **uncheck** this box. This automatically puts the patient's therapy status on **HOLD** and flags them on the Dashboard.
-8. Click **Record MRI scan**.
+### 🧠 Section B: Unified MRI & ARIA Surveillance (Branching Logic)
+Because an ARIA event always originates from an MRI scan, **MRI Update** and **ARIA Event** are combined into a single synchronized workflow:
+1. Choose **Log New Completed MRI Scan**, **Schedule Future MRI Scan**, or **Edit Existing MRI / ARIA Record**.
+2. Select **MRI Type** (`Scheduled Surveillance`, `ARIA Follow-up`, or `Unscheduled Surveillance`) and **MRI Scan Date**.
+   - If `Unscheduled Surveillance`, enter the symptom reason (e.g., headache, confusion, visual disturbance).
+3. **Radiographic Findings (Dynamic Branching)**:
+   - Check **No ARIA on this scan** if the scan is negative for ARIA.
+   - Or check **ARIA-E Present** and/or **ARIA-H Present** to dynamically reveal:
+     - **ARIA-E / ARIA-H Radiographic Severity** (`Mild`, `Moderate`, `Severe`) and **Finding Status** (`Active`, `Stable`, `Improved`, `Worsened`, `Resolved`).
+     - **Clinical Symptom Severity** (`None`, `Mild`, `Moderate`, `Severe`).
+     - **Overall ARIA Event Status** (`Active`, `Improved`, `Worsened`, `Resolved`).
+     - **Monthly Safety MRI Monitoring** and schedule revert/restart flags.
+4. **Safety Clearance & Automatic Synchronization**:
+   - Select **Continue Therapy (Clear to proceed)**, **Hold Therapy**, or **Discontinue Therapy**.
+   - Clicking **Save MRI & Sync Patient Status** atomically updates the MRI log, the ARIA event log, and the patient's overall therapy status. Marking ARIA as **Resolved** and **Continue Therapy** automatically clears the Active ARIA alert and resumes therapy.
 
----
+### 📞 Section C: Phone Call Log
+- View and act on **Pending Follow-up Calls** at the top with 1-click **📞 Log Linked Follow-up** or **✅ Follow-up Occurred** buttons.
+- Log new calls (`Call #1`, `Call #2`...), link follow-up calls to prior calls, and edit or delete any past call via the **✏️ Edit or Delete an Existing Phone Call** expander.
 
-## ⚠️ 5. How to Log an ARIA Event
-If a patient is diagnosed with ARIA (Amyloid-Related Imaging Abnormalities):
+### ⚙️ Section D: Profile, Hold & Discontinuation
+- **Edit Patient Profile**: Modify Drug Therapy, APOE Status, Infusion Location, CMS Registry Number, Baseline MRI flag, or overall Therapy Status at any time.
+- **Manage Discontinuation**: Record permanent therapy discontinuation (`Stroke`, `DVT`, `MI`, `Pulmonary Embolism`, `Non-compliance`, `Disease Progression`, `Other`) and follow-up MRI requirements, or edit/revert an existing discontinuation.
 
-1. Select **ARIA Event** in the sidebar.
-2. Select the patient's **MRN** and enter the **Detection Date**.
-3. Check the type: **ARIA-E** (swelling) and/or **ARIA-H** (bleeding).
-4. Select the **Radiographic Severity** (Mild, Moderate, Severe) and **Clinical Symptom Severity** (None, Mild, Moderate, Severe).
-5. Select the **Recommended Therapy Action**:
-   * **Hold**: Suspends infusions (patient appears on the Dashboard hold list).
-   * **Discontinue**: Permanently stops therapy.
-6. Check **Require Monthly Safety MRI Monitoring** to set a 30-day recurring MRI tracker on the Dashboard.
-7. Click **Submit ARIA Event**.
-
----
-
-## ❌ 6. How to Record a Discontinuation
-If a patient permanently stops therapy (due to adverse events, disease progression, or choice):
-
-1. Select **Discontinuation Event** in the sidebar.
-2. Select the patient's **MRN** and enter the **Discontinuation Date**.
-3. Select the primary **Clinical Reason** (e.g., Stroke, Disease Progression, DVT). If selecting "Other", type specific details.
-4. Check **Post-Discontinuation Follow-up Safety MRI Required** if follow-up safety scans are needed.
-5. Click **Record Permanent Discontinuation**. (This permanently changes their status to inactive and removes them from scheduled infusion due dates).
-
----
-
-## 🔍 7. How to Look Up a Patient's History
-To review a patient's complete clinical timeline:
-
-1. Select **Patient Lookup** in the sidebar.
-2. Select the patient's **MRN**.
-3. Use the tabs to browse:
-   * **💉 Infusions History**: List of completed infusions, dates, and reactions.
-   * **🧠 MRI Scans History**: List of scanned dates, types, findings, and holds.
-   * **⚠️ ARIA Events History**: Chronological log of ARIA events, severities, and status.
-   * **❌ Discontinuation details**: Reasons and follow-up plans.
-   * **📞 Phone Calls**: Chronological history of follow-up calls, scheduled follow-up dates, and confirmation status.
-   * **📋 Audit & Change Logs**: A human-readable history showing exactly **who** made changes to this patient's profile and **when**, outlining the exact changes (e.g. changing location from Talis to Vivo).
-
----
-
-## 📞 8. How to Log and Track Phone Calls
-
-To document patient phone calls, link follow-ups, and track required actions:
-
-1. Select **Phone Call Log** in the sidebar.
-2. Select the patient's **MRN**. The app displays the patient's total call count and next sequential **Call ID** (e.g. `Call #1, Call #2`).
-3. **Follow-up Linking**:
-   * If this call is following up on a previous conversation, select the prior call from the **"Is this call a follow-up to a previous call?"** dropdown (or click the **"📞 Log Follow-up"** shortcut button directly on the prior call in the history table).
-   * Submitting a linked follow-up automatically marks the original call's **Follow-up Confirmed** as **Yes**.
-4. Enter the **Call Date** (formatted as `MM/DD/YYYY`), select the **Call Reason**, and record the **Call Outcome**.
-5. **Follow-up Tracking**:
-   * Select **Follow-up Required**: Choose **Yes** or **No**.
-   * If **Yes**, enter the scheduled **Follow-up Date** and specify **Follow-up Confirmed** (**Yes** or **No**).
-6. Add notes and click **Log Phone Call**.
-7. **Pending Follow-up Action List**: Under the patient's history, any unconfirmed follow-up calls are prominently displayed with quick buttons to either **Log Follow-up** (pre-linking the call in the form above) or directly mark **Follow-up Call Occurred**.
-
----
-
-## 🤖 9. Persistent Sidebar "Ask Assistant" Drawer
-
-To assist clinical coordinators, nurses, and neurologists without losing their place on any page:
-
-1. Look at the bottom of the **left sidebar** on **any page** in the application.
-2. Click to expand the **🤖 Ask Assistant** drawer.
-3. Type any operational or clinical scheduling query in natural language:
-   * *"When are surveillance MRIs required for Lecanemab?"*
-   * *"What happens when an ARIA-E event is detected?"*
-   * *"How do I tie a follow-up phone call to a previous call?"*
-   * *"Why is the app blocking me from logging Infusion #3?"*
-4. **Safety & HIPAA Guardrail**:
-   * The Assistant is grounded strictly in clinical protocols and system rules.
-   * To ensure compliance with HIPAA, never enter patient names, dates of birth, or MRNs into the chat.
-
----
-
-## 🔧 Developer Notes: Updating the App
-
-### Making Code Changes
-1. Edit files locally in the `anti_amyloid_tracker/` directory.
-2. Commit and push to GitHub:
-   ```bash
-   git add -A
-   git commit -m "Description of changes"
-   git push origin main
-   ```
-3. Go to the Posit Connect Cloud dashboard and click **Republish** to pull the latest commit.
-
-### Environment Variables
-Set these in the Posit Connect Cloud dashboard under the app's settings → Environment Variables:
-- Neon Database: `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD`
-- Gemini AI Assistant: `GEMINI_API_KEY` (Gemini API Key for the conversational assistant)
-
-### Re-enabling Authentication
-To restore authentication for production use:
-1. Re-integrate `services/auth.py` by importing `render_auth_sidebar`, `get_logged_in_user`, and `verify_access` in `app.py` and all page files.
-2. Configure the identity provider (e.g., Entra ID) in Posit Connect Cloud settings.
-3. Set the `ALLOWED_USERS` environment variable to a comma-separated list of authorized email addresses.
+### 📋 Section E: Audit & Change Log
+- Displays a chronological audit trail of all `INSERT`, `UPDATE`, and `DELETE` actions for the patient, formatted in **US Central Time (`America/Chicago`)** with field-level diffs (`[therapy_status] 'hold' ➔ 'continue'`).

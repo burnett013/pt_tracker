@@ -4,6 +4,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import streamlit as st
 from services.ui_components import apply_custom_css, render_sidebar_assistant
+from db.queries import ensure_schema_migrations
 
 # Page Configuration
 st.set_page_config(
@@ -13,43 +14,51 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Apply styling and persistent assistant drawer
+# Apply styling, schema sync, and persistent assistant drawer
 apply_custom_css()
+ensure_schema_migrations()
 render_sidebar_assistant()
 
 # Welcome Header
 st.title("🧬 Anti-Amyloid Patient Tracking System")
-st.subheader("Clinical Workflow Tracker & Safety Monitor")
+st.subheader("Patient-Centric Clinical Workflow Tracker & Safety Monitor")
 
-# Introduction and Information
 st.markdown("""
-Welcome to the **Anti-Amyloid Patient Tracking App**. This workflow application is designed for clinical and research staff to track patients undergoing anti-amyloid therapies (*lecanemab* and *donanemab*).
+Welcome to the **Anti-Amyloid Patient Tracking App**. This workflow application is designed for clinical and research staff to manage patients undergoing anti-amyloid therapies (*lecanemab* and *donanemab*).
 
-This application manages the structured clinical workflow, including infusion schedule monitoring, surveillance MRI reminders, ARIA event surveillance, and discontinuation tracking.
-
-### 📋 Key Workflows
-Select a page from the sidebar to begin:
+The tracker is organized around a streamlined **3-page patient-centric workflow** so you can select a patient once and manage their entire treatment schedule, infusions, unified MRI/ARIA surveillance, phone calls, and status in one place.
 """)
 
-# Setup grid of actions
-col1, col2 = st.columns(2)
+col1, col2, col3 = st.columns(3)
 
 with col1:
-    st.info("📊 **01 Dashboard**  \nReview the active patient roster and identify patients requiring immediate action, surveillance MRIs, or holds this week.")
-    st.info("➕ **02 Patient Enrollment**  \nEnroll new patients by entering their MRN, APOE status, selected therapy, baseline MRI completion, and infusion location.")
-    st.info("💉 **03 Infusion Update**  \nLog a newly administered infusion. The system automatically increments infusion numbers and tracks interval dates.")
-    st.info("🧠 **04 MRI Update**  \nDocument scheduled surveillance scans or ARIA follow-up MRIs, noting safety outcomes and proceed/hold status.")
+    st.info(
+        "📊 **01 Dashboard**  \n"
+        "Review the daily clinical worklist, identify patients needing immediate action this week, "
+        "and jump directly into any patient's profile."
+    )
+    st.page_link("pages/01_Dashboard.py", label="Open Dashboard ➔", icon="📊")
 
 with col2:
-    st.warning("⚠️ **05 ARIA Event**  \nLog ARIA-E or ARIA-H events, including separate radiographic severities for each type, and initiate hold or monthly surveillance logic.")
-    st.warning("❌ **06 Discontinuation Event**  \nDocument discontinuation reason (e.g., adverse events, progression) and flag if follow-up safety MRIs are required.")
-    st.success("🔍 **07 Patient Lookup**  \nSearch any patient by MRN to view their full chronological timeline of infusions, MRIs, ARIA logs, phone calls, and audit logs.")
-    st.success("📞 **08 Phone Call Log**  \nDocument follow-up phone calls to patients, tracking call reason, outcome, and whether additional follow-up is required.")
+    st.info(
+        "➕ **02 Patient Enrollment**  \n"
+        "Enroll a new patient by MRN, record APOE & baseline MRI status, and optionally "
+        "auto-generate their initial infusion and MRI schedule."
+    )
+    st.page_link("pages/02_Patient_Enrollment.py", label="Enroll New Patient ➔", icon="➕")
+
+with col3:
+    st.success(
+        "👤 **03 Patient Profile**  \n"
+        "Unified workspace for each patient: full infusion/MRI schedule ('sticky note' view), "
+        "combined MRI & ARIA logging with branching logic, phone call logs, and full CRUD editing."
+    )
+    st.page_link("pages/03_Patient_Profile.py", label="Open Patient Profile ➔", icon="👤")
 
 st.markdown("""
 ---
 ### 🔒 Data Governance & Privacy Reminders
-- **No Demographics**: Never enter patient names, date of birth, phone numbers, or other identifiers.
-- **MRN Only**: The Medical Record Number (MRN) is the **only** patient identifier shown and stored.
-- **Auditing**: All database transactions are automatically audited, logging the authenticated user and timestamp.
+- **No Demographics**: Never enter patient names, dates of birth, phone numbers, or other unnecessary identifiers.
+- **MRN Only**: The Medical Record Number (`M00XXXXXXX`) is the **only** patient identifier shown and stored.
+- **Auditing**: All creations, edits, and deletions are automatically logged in Central Time (`CT`) with field-level diffs.
 """)

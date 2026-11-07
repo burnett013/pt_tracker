@@ -30,52 +30,58 @@ CREATE TABLE patients (
     CONSTRAINT mrn_format_chk CHECK (mrn ~ '^M00[0-9]{7}$')
 );
 
--- 2. Infusions Table
---    UPGRADE 6: replaced infusion_reaction BOOLEAN with reaction_severity TEXT enum
+-- 2. Infusions Table (supports both scheduled/planned and completed infusions)
 CREATE TABLE infusions (
     infusion_pk UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     patient_pk UUID NOT NULL REFERENCES patients(patient_pk) ON DELETE CASCADE,
     infusion_number INTEGER NOT NULL,
+    scheduled_date DATE,
     infusion_date DATE NOT NULL,
+    status TEXT NOT NULL DEFAULT 'completed' CHECK (status IN ('scheduled', 'completed', 'missed', 'cancelled')),
     reaction_severity TEXT NOT NULL DEFAULT 'none' CHECK (reaction_severity IN ('none', 'mild', 'moderate', 'severe', 'anaphylaxis')),
     premedication_reminder BOOLEAN NOT NULL DEFAULT FALSE,
     notes TEXT,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_by TEXT,
-    UNIQUE (patient_pk, infusion_number),
-    UNIQUE (patient_pk, infusion_date)
+    UNIQUE (patient_pk, infusion_number)
 );
 
--- 3. MRIs Table
---    UPGRADE 3: added no_aria_confirmed BOOLEAN
---    UPGRADE 5: added 'unscheduled surveillance' to mri_type CHECK, added unscheduled_reason TEXT
+-- 3. MRIs Table (Unified with ARIA branching details & scheduled scan support)
 CREATE TABLE mris (
     mri_pk UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     patient_pk UUID NOT NULL REFERENCES patients(patient_pk) ON DELETE CASCADE,
+    scheduled_date DATE,
     mri_date DATE NOT NULL,
+    status TEXT NOT NULL DEFAULT 'completed' CHECK (status IN ('scheduled', 'completed', 'cancelled')),
+    target_before_infusion INTEGER,
     mri_type TEXT NOT NULL CHECK (mri_type IN ('scheduled surveillance', 'ARIA follow-up', 'unscheduled surveillance')),
     no_aria_confirmed BOOLEAN DEFAULT FALSE,
-    aria_e_present BOOLEAN,
-    aria_h_present BOOLEAN,
-    other_findings BOOLEAN,
+    aria_e_present BOOLEAN DEFAULT FALSE,
+    aria_h_present BOOLEAN DEFAULT FALSE,
+    radiographic_severity_e TEXT CHECK (radiographic_severity_e IN ('mild', 'moderate', 'severe')),
+    radiographic_severity_h TEXT CHECK (radiographic_severity_h IN ('mild', 'moderate', 'severe')),
+    symptom_severity TEXT CHECK (symptom_severity IN ('none', 'mild', 'moderate', 'severe')),
+    other_findings BOOLEAN DEFAULT FALSE,
     other_findings_details TEXT,
-    proceed_to_next_infusion BOOLEAN,
-    aria_e_status TEXT CHECK (aria_e_status IN ('stable', 'improved', 'worsened', 'resolved')),
-    aria_h_status TEXT CHECK (aria_h_status IN ('stable', 'worsened', 'resolved')),
-    revert_to_original_mri_schedule BOOLEAN,
-    restart_mri_schedule BOOLEAN,
+    proceed_to_next_infusion BOOLEAN DEFAULT TRUE,
+    aria_e_status TEXT CHECK (aria_e_status IN ('active', 'stable', 'improved', 'worsened', 'resolved')),
+    aria_h_status TEXT CHECK (aria_h_status IN ('active', 'stable', 'improved', 'worsened', 'resolved')),
+    overall_aria_status TEXT CHECK (overall_aria_status IN ('active', 'improved', 'worsened', 'resolved')),
+    therapy_action TEXT CHECK (therapy_action IN ('continue', 'hold', 'discontinue')),
+    monthly_mri_required BOOLEAN DEFAULT FALSE,
+    revert_to_original_mri_schedule BOOLEAN DEFAULT FALSE,
+    restart_mri_schedule BOOLEAN DEFAULT FALSE,
     unscheduled_reason TEXT,
     notes TEXT,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_by TEXT
 );
 
--- 4. ARIA Events Table
---    UPGRADE 2: replaced single radiographic_severity with radiographic_severity_e and radiographic_severity_h
---    UPGRADE 4: expanded status CHECK from ('active','inactive') to ('active','improved','worsened','resolved')
+-- 4. ARIA Events Table (linked to mris via mri_pk)
 CREATE TABLE aria_events (
     aria_event_pk UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     patient_pk UUID NOT NULL REFERENCES patients(patient_pk) ON DELETE CASCADE,
+    mri_pk UUID REFERENCES mris(mri_pk) ON DELETE CASCADE,
     aria_date DATE NOT NULL,
     aria_e BOOLEAN,
     aria_h BOOLEAN,
@@ -113,7 +119,7 @@ CREATE TABLE discontinuation_events (
     created_by TEXT
 );
 
--- 6. Phone Calls Table (UPGRADE 1: new table for follow-up phone call logging)
+-- 6. Phone Calls Table
 CREATE TABLE phone_calls (
     phone_call_pk UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     patient_pk UUID NOT NULL REFERENCES patients(patient_pk) ON DELETE CASCADE,
@@ -209,6 +215,9 @@ BEGIN
     INSERT INTO audit_log (table_name, record_pk, action, changed_by, old_value, new_value)
     VALUES (tbl_name, rec_pk, lower(act), usr, old_val, new_val);
 
+    IF TG_OP = 'DELETE' THEN
+        RETURN OLD;
+    END IF;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;

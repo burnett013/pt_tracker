@@ -103,6 +103,12 @@ def apply_custom_css():
             background-color: rgba(128, 128, 128, 0.15);
             margin: 1.5rem 0;
         }
+        
+        /* Ensure full text visibility in text inputs, text areas, and tables */
+        textarea, input[type="text"] {
+            white-space: pre-wrap !important;
+            word-break: break-word !important;
+        }
         </style>
     """, unsafe_allow_html=True)
 
@@ -143,6 +149,26 @@ def format_date(d, default: str = "-") -> str:
         return d.strftime("%m/%d/%Y")
     except Exception:
         return str(d)
+
+def format_timestamp_local(dt, default: str = "-") -> str:
+    """
+    Converts a UTC/naive database timestamp into US Central Time (America/Chicago)
+    and formats as MM/DD/YYYY hh:mm:ss AM/PM CT.
+    """
+    if dt is None:
+        return default
+    try:
+        import datetime
+        from zoneinfo import ZoneInfo
+        central_tz = ZoneInfo("America/Chicago")
+        if isinstance(dt, datetime.datetime):
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=datetime.timezone.utc)
+            local_dt = dt.astimezone(central_tz)
+            return local_dt.strftime("%m/%d/%Y %I:%M:%S %p CT")
+        return dt.strftime("%m/%d/%Y")
+    except Exception:
+        return str(dt)
 
 def render_sidebar_assistant():
     """Renders a persistent 'Ask Assistant' drawer in the sidebar accessible from any page."""
