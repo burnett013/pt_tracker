@@ -5,7 +5,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import datetime
 import streamlit as st
 
-from services.ui_components import apply_custom_css, render_sidebar_assistant
+from services.ui_components import apply_custom_css
 from services.auth import verify_access
 from services.validation import clean_mrn, is_valid_mrn
 from db.queries import enroll_patient, get_patient_overview, generate_patient_schedule
@@ -13,7 +13,6 @@ from db.queries import enroll_patient, get_patient_overview, generate_patient_sc
 st.set_page_config(page_title="Patient Enrollment | Anti-Amyloid Tracker", page_icon="➕", layout="wide")
 apply_custom_css()
 user = verify_access()
-render_sidebar_assistant()
 
 st.title("➕ Patient Enrollment")
 st.caption("Enroll a new patient into the tracking registry using the Medical Record Number (MRN) only.")
