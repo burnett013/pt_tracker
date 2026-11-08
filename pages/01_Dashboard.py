@@ -6,14 +6,14 @@ import streamlit as st
 import pandas as pd
 
 from services.ui_components import apply_custom_css, render_action_card, render_sidebar_assistant
+from services.auth import verify_access
 from services.dashboard_logic import evaluate_patient_status
 from db.queries import get_patient_overview, update_therapy_status
 
 st.set_page_config(page_title="Dashboard | Anti-Amyloid Tracker", page_icon="📊", layout="wide")
 apply_custom_css()
+user = verify_access()
 render_sidebar_assistant()
-
-user = {"email": "demo@clinic.local", "username": "demo_user", "name": "Demo User"}
 
 st.title("📊 Clinical Worklist & Dashboard")
 st.caption("Central landing dashboard for patient surveillance, schedule monitoring, and action planning.")

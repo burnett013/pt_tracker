@@ -13,6 +13,7 @@ from services.ui_components import (
     format_timestamp_local,
     render_sidebar_assistant
 )
+from services.auth import verify_access
 from services.schedule_logic import (
     MRI_REQUIREMENTS,
     get_infusion_interval_days,
@@ -41,9 +42,8 @@ from db.queries import (
 
 st.set_page_config(page_title="Patient Profile | Anti-Amyloid Tracker", page_icon="👤", layout="wide")
 apply_custom_css()
+user = verify_access()
 render_sidebar_assistant()
-
-user = {"email": "demo@clinic.local", "username": "demo_user", "name": "Demo User"}
 
 st.title("👤 Patient Profile & Clinical Workspace")
 st.caption("Select a patient once to manage their treatment schedule, infusions, unified MRI & ARIA surveillance, phone calls, and audit history.")

@@ -4,6 +4,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import streamlit as st
 from services.ui_components import apply_custom_css, render_sidebar_assistant
+from services.auth import verify_access
 from db.queries import ensure_schema_migrations
 
 # Page Configuration
@@ -14,8 +15,9 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Apply styling, schema sync, and persistent assistant drawer
+# Apply styling, enforce Entra ID authentication, schema sync, and persistent assistant drawer
 apply_custom_css()
+user = verify_access()
 ensure_schema_migrations()
 render_sidebar_assistant()
 

@@ -293,7 +293,7 @@ def execute_transaction(queries_with_params, user_email="system"):
     try:
         conn.autocommit = False
         with conn.cursor() as cur:
-            cur.execute('SET LOCAL "app.current_user" = %s;', (user_email,))
+            cur.execute("SELECT set_config('app.current_user', %s, true);", (user_email,))
 
             last_result = None
             for query, params in queries_with_params:
@@ -783,7 +783,7 @@ def record_mri_and_aria(
     try:
         conn.autocommit = False
         with conn.cursor() as cur:
-            cur.execute('SET LOCAL "app.current_user" = %s;', (user_email,))
+            cur.execute("SELECT set_config('app.current_user', %s, true);", (user_email,))
 
             queries = _build_mri_aria_sync_queries(
                 patient_pk, mri_date, mri_type, status, scheduled_date, target_before_infusion,
